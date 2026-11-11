@@ -3,18 +3,114 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: light;
+  color-scheme: dark;
+  --background: 220 47% 8%;
+  --foreground: 210 40% 98%;
+  --muted: 215 20% 65%;
+  --border: 217 31% 23%;
+  --panel: 218 39% 12%;
+  --panel-raised: 217 34% 16%;
+  --sidebar: 220 45% 10%;
+  --primary: 173 80% 40%;
+  --primary-dark: 173 80% 33%;
+  --accent: 207 90% 62%;
+  --surface-subtle: 218 35% 15%;
+  --surface-hover: 217 31% 22%;
+  --subtle: 215 16% 55%;
+  --success-surface: 173 58% 15%;
+  --success-border: 173 50% 28%;
+  --success-text: 166 72% 72%;
+  --warning-surface: 39 54% 16%;
+  --warning-border: 39 56% 31%;
+  --warning-text: 42 92% 76%;
+  --danger-surface: 0 42% 16%;
+  --danger-border: 0 48% 31%;
+  --danger-text: 0 84% 78%;
+  --shadow: 220 50% 2%;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
+[data-theme="light"] {
+  color-scheme: light;
+  --background: 210 40% 98%;
+  --foreground: 222 47% 11%;
+  --muted: 215 16% 40%;
+  --border: 214 32% 88%;
+  --panel: 0 0% 100%;
+  --panel-raised: 210 40% 96%;
+  --sidebar: 219 47% 13%;
+  --primary: 173 72% 30%;
+  --primary-dark: 173 72% 24%;
+  --accent: 207 82% 46%;
+  --surface-subtle: 210 36% 96%;
+  --surface-hover: 210 30% 92%;
+  --subtle: 215 14% 46%;
+  --success-surface: 159 54% 94%;
+  --success-border: 160 44% 78%;
+  --success-text: 166 72% 24%;
+  --warning-surface: 45 100% 94%;
+  --warning-border: 42 88% 79%;
+  --warning-text: 31 86% 26%;
+  --danger-surface: 0 86% 97%;
+  --danger-border: 0 74% 82%;
+  --danger-text: 0 67% 34%;
+  --shadow: 220 31% 28%;
+}
+
 body {
   margin: 0;
+  min-width: 320px;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
 }
 
 button,
-input {
+input,
+textarea,
+select {
   font: inherit;
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+}
+
+::selection {
+  background: hsl(var(--primary) / 0.32);
+  color: hsl(var(--foreground));
+}
+
+/* These aliases keep the existing feature pages legible while they move to shared primitives. */
+#root .bg-slate-50 { background-color: hsl(var(--surface-subtle)); }
+#root .bg-slate-100 { background-color: hsl(var(--panel-raised)); }
+#root .hover\\:bg-slate-50:hover,
+#root .hover\\:bg-slate-100:hover { background-color: hsl(var(--surface-hover)); }
+#root .text-slate-900,
+#root .text-slate-800,
+#root .text-slate-700 { color: hsl(var(--foreground)); }
+#root .text-slate-500 { color: hsl(var(--subtle)); }
+#root .bg-emerald-50,
+#root .bg-emerald-100 { background-color: hsl(var(--success-surface)); }
+#root .text-emerald-700,
+#root .text-emerald-800 { color: hsl(var(--success-text)); }
+#root .border-emerald-200 { border-color: hsl(var(--success-border)); }
+#root .bg-amber-50,
+#root .bg-amber-100 { background-color: hsl(var(--warning-surface)); }
+#root .text-amber-800,
+#root .text-amber-900 { color: hsl(var(--warning-text)); }
+#root .border-amber-200 { border-color: hsl(var(--warning-border)); }
+#root .bg-red-50,
+#root .bg-red-100 { background-color: hsl(var(--danger-surface)); }
+#root .text-red-700 { color: hsl(var(--danger-text)); }
+#root .border-red-200 { border-color: hsl(var(--danger-border)); }
+
+* {
+  scrollbar-color: hsl(var(--border)) transparent;
 }

@@ -4,17 +4,20 @@ export default {
   theme: {
     extend: {
       colors: {
-        border: "hsl(214 32% 91%)",
-        background: "hsl(210 40% 98%)",
-        foreground: "hsl(222 47% 11%)",
-        muted: "hsl(215 16% 47%)",
-        panel: "hsl(0 0% 100%)",
-        primary: "hsl(170 76% 28%)",
-        primaryDark: "hsl(174 84% 18%)",
-        accent: "hsl(39 92% 54%)",
+        border: "hsl(var(--border) / <alpha-value>)",
+        background: "hsl(var(--background) / <alpha-value>)",
+        foreground: "hsl(var(--foreground) / <alpha-value>)",
+        muted: "hsl(var(--muted) / <alpha-value>)",
+        panel: "hsl(var(--panel) / <alpha-value>)",
+        panelRaised: "hsl(var(--panel-raised) / <alpha-value>)",
+        sidebar: "hsl(var(--sidebar) / <alpha-value>)",
+        primary: "hsl(var(--primary) / <alpha-value>)",
+        primaryDark: "hsl(var(--primary-dark) / <alpha-value>)",
+        accent: "hsl(var(--accent) / <alpha-value>)",
       },
       boxShadow: {
-        soft: "0 16px 50px -30px rgb(15 23 42 / 0.35)",
+        soft: "0 18px 40px -28px hsl(var(--shadow) / 0.4)",
+        panel: "0 12px 32px -22px hsl(var(--shadow) / 0.42)",
       },
       fontFamily: {
         sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],

@@ -2,6 +2,7 @@ import { ArrowUpRight, FileText, FolderOpen, PieChart, Upload } from "lucide-rea
 
 import { Button } from "../components/ui/Button.jsx";
 import { Card, CardBody, CardHeader } from "../components/ui/Card.jsx";
+import { MetricCard } from "../components/ui/MetricCard.jsx";
 
 export function DashboardPage({
   recentDocuments,
@@ -25,56 +26,48 @@ export function DashboardPage({
     { label: "AI Summaries", value: summaryCount, icon: FolderOpen },
   ];
 
+  function getResearchTitle(result) {
+    return result.title || result.document_filename || result.filename || "Saved research";
+  }
+
   return (
-    <div className="space-y-6">
-      <section className="rounded-lg border border-border bg-panel px-6 py-7 shadow-soft">
-        <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-          <div className="max-w-3xl">
-            <p className="mb-2 text-sm font-medium text-primary">Assessment-ready workspace</p>
-            <h1 className="text-3xl font-semibold tracking-normal text-foreground">
-              Financial document intelligence, RAG, and bounded agent analysis.
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">
-              Upload PDFs, ask source-grounded questions, generate summaries, and run approved financial calculations against persisted document evidence.
-            </p>
-          </div>
-          <Button onClick={() => onNavigate("documents")} className="w-full md:w-auto">
+    <div className="space-y-5">
+      <section className="flex flex-col gap-4 border-b border-border pb-5 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-medium text-primary">Workspace overview</p>
+          <p className="mt-1 text-sm text-muted">Recent documents, research, and saved analysis outputs.</p>
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button onClick={() => onNavigate("documents")} className="w-full sm:w-auto">
             <Upload size={17} aria-hidden="true" />
             Upload Document
+          </Button>
+          <Button variant="secondary" onClick={() => onNavigate("research")} className="w-full sm:w-auto">
+            <PieChart size={17} aria-hidden="true" />
+            Run Analysis
           </Button>
         </div>
       </section>
 
       <section className="grid gap-4 md:grid-cols-3">
         {stats.map((stat) => {
-          const Icon = stat.icon;
           return (
-            <Card key={stat.label}>
-              <CardBody>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm text-muted">{stat.label}</p>
-                    <p className="mt-2 text-3xl font-semibold">
-                      {resultsLoading && stat.label !== "Documents"
-                        ? "..."
-                        : stat.value}
-                    </p>
-                  </div>
-                  <div className="flex size-10 items-center justify-center rounded-md bg-slate-100 text-primary">
-                    <Icon size={20} aria-hidden="true" />
-                  </div>
-                </div>
-              </CardBody>
-            </Card>
+            <MetricCard
+              key={stat.label}
+              label={stat.label}
+              value={resultsLoading && stat.label !== "Documents" ? "..." : stat.value}
+              icon={stat.icon}
+            />
           );
         })}
       </section>
 
-      <Card>
+      <div className="grid gap-5 xl:grid-cols-2">
+        <Card>
         <CardHeader className="flex items-center justify-between">
           <div>
             <h2 className="text-base font-semibold">Recent documents</h2>
-            <p className="mt-1 text-sm text-muted">Persisted PDF uploads restored from the backend.</p>
+            <p className="mt-1 text-sm text-muted">Latest uploaded financial documents.</p>
           </div>
           <Button variant="ghost" onClick={() => onNavigate("documents")} aria-label="Open documents">
             <ArrowUpRight size={18} aria-hidden="true" />
@@ -98,9 +91,9 @@ export function DashboardPage({
           ) : (
             <div className="divide-y divide-border">
               {recentDocuments.map((document) => (
-                <div key={document.document_id ?? document.filename} className="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="font-medium">{document.filename}</p>
+                <div key={document.document_id ?? document.filename} className="flex min-w-0 flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium" title={document.filename ?? "Untitled document"}>{document.filename ?? "Untitled document"}</p>
                     <p className="text-sm text-muted">{document.pages} pages · {document.words?.toLocaleString() ?? 0} words</p>
                   </div>
                   <p className="text-sm font-medium text-primary">
@@ -111,13 +104,13 @@ export function DashboardPage({
             </div>
           )}
         </CardBody>
-      </Card>
+        </Card>
 
-      <Card>
+        <Card>
         <CardHeader className="flex items-center justify-between">
           <div>
-            <h2 className="text-base font-semibold">Saved outputs</h2>
-            <p className="mt-1 text-sm text-muted">Persisted summaries and agent analyses.</p>
+            <h2 className="text-base font-semibold">Recent research</h2>
+            <p className="mt-1 text-sm text-muted">Saved summaries and financial analysis.</p>
           </div>
           <Button variant="ghost" onClick={() => onNavigate("reports")} aria-label="Open reports">
             <ArrowUpRight size={18} aria-hidden="true" />
@@ -141,10 +134,12 @@ export function DashboardPage({
           ) : (
             <div className="divide-y divide-border">
               {savedResults.slice(0, 5).map((result) => (
-                <div key={result.id} className="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="font-medium">{result.title}</p>
-                    <p className="text-sm text-muted">{result.result_type} · {result.status}</p>
+                <div key={result.id} className="flex min-w-0 flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium" title={getResearchTitle(result)}>{getResearchTitle(result)}</p>
+                    <p className="truncate text-sm text-muted" title={result.document_filename ?? result.filename ?? ""}>
+                      {result.document_filename ?? result.filename ?? `${result.result_type} · ${result.status}`}
+                    </p>
                   </div>
                   <p className="text-sm text-muted">{new Date(result.created_at).toLocaleString()}</p>
                 </div>
@@ -152,7 +147,8 @@ export function DashboardPage({
             </div>
           )}
         </CardBody>
-      </Card>
+        </Card>
+      </div>
     </div>
   );
 }

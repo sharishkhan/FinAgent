@@ -37,6 +37,15 @@ function getResultTitle(result) {
   );
 }
 
+function getDocumentFilename(result, documents) {
+  return (
+    result.document_filename ||
+    result.filename ||
+    documents.find((document) => document.document_id === result.document_id)?.filename ||
+    null
+  );
+}
+
 function getResultSummary(result) {
   const payload = result.payload ?? result.result ?? result;
 
@@ -118,7 +127,7 @@ function renderResultText(text) {
     });
 }
 
-export function ReportsPage() {
+export function ReportsPage({ recentDocuments = [] }) {
   const [results, setResults] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -244,11 +253,12 @@ export function ReportsPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {results.map((result) => {
-                  const resultId = result.result_id ?? result.id;
-                  const isSelected =
-                    selectedResult &&
-                    (selectedResult.result_id ?? selectedResult.id) === resultId;
+              {results.map((result) => {
+                const resultId = result.result_id ?? result.id;
+                const isSelected =
+                  selectedResult &&
+                  (selectedResult.result_id ?? selectedResult.id) === resultId;
+                const documentFilename = getDocumentFilename(result, recentDocuments);
 
                   return (
                     <button
@@ -262,14 +272,13 @@ export function ReportsPage() {
                       }`}
                     >
                       <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="break-words text-sm font-semibold text-slate-900">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-slate-900" title={getResultTitle(result)}>
                             {getResultTitle(result)}
                           </p>
 
-                          <p className="mt-1 text-xs text-muted">
-                            {result.result_type ?? "analysis"} ·{" "}
-                            {result.status ?? "saved"}
+                          <p className="truncate text-xs text-muted" title={documentFilename ?? ""}>
+                            {documentFilename ?? `${result.result_type ?? "analysis"} · ${result.status ?? "saved"}`}
                           </p>
                         </div>
 
@@ -286,10 +295,10 @@ export function ReportsPage() {
                           {formatTimestamp(result.created_at)}
                         </span>
 
-                        {result.document_id && (
+                        {documentFilename && (
                           <span className="inline-flex items-center gap-1">
                             <FileText size={14} aria-hidden="true" />
-                            {result.document_id}
+                            <span className="max-w-44 truncate" title={documentFilename}>{documentFilename}</span>
                           </span>
                         )}
                       </div>
