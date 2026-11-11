@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+backend/.venv/
+backend/tests/tmp*/
+backend/tests/_test_data/
+
+# Flask
+instance/
+.env
+backend/.env
+backend/data/*.sqlite3
+backend/data/*.sqlite3-*
+
+# Node
+node_modules/
+dist/
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
