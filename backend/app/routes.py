@@ -6,6 +6,7 @@ from .services.llm_service import (
     generate_grounded_answer,
 )
 from .services.agent_service import AgentAnalysisError, analyze_document_with_agent
+from .services.guards import check_question_guards
 from .services.pdf_service import (
     PDFProcessingError,
     get_processed_document,
@@ -112,6 +113,24 @@ def answer_document_question(document_id):
     question = question.strip()
     if len(question) > 1000:
         return jsonify({"success": False, "error": "Question must be 1000 characters or fewer."}), 400
+
+    guard_result = check_question_guards(document, question)
+    if guard_result is not None:
+        response_payload = {
+            "success": True,
+            "status": "insufficient_evidence",
+            "document_id": document_id,
+            "question": question,
+            "answer": guard_result[1],
+            "source_pages": [],
+            "sources": [],
+        }
+        try:
+            response_payload["history_id"] = save_question_history(document_id, response_payload)
+        except PersistenceError as exc:
+            return jsonify({"success": False, "error": str(exc)}), 500
+
+        return jsonify(response_payload)
 
     try:
         sources = retrieve_relevant_chunks(document, question)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from .financial_tools_service import FinancialToolError, execute_financial_tool
+from .guards import check_question_guards
 from .llm_service import (
     LLMSummaryError,
     generate_agent_final_answer,
@@ -146,6 +147,24 @@ def analyze_document_with_agent(document: dict, question: str) -> dict:
     normalized_question = _normalize_question(question)
     tool_trace = []
     limitations = []
+
+    guard_result = check_question_guards(document, normalized_question)
+    if guard_result is not None:
+        guard_name, guard_message = guard_result
+        return {
+            "success": True,
+            "status": "insufficient_evidence",
+            "document_id": document["document_id"],
+            "question": normalized_question,
+            "answer": guard_message,
+            "findings": [],
+            "calculations": [],
+            "source_pages": [],
+            "sources": [],
+            "tools_executed": [],
+            "limitations": [f"Question declined by the '{guard_name}' guard before any document search."],
+            "disclaimer": "Agentic financial analysis is document-grounded and not investment advice.",
+        }
 
     search_trace = _execute_tool_trace(
         "search_document",
