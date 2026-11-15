@@ -42,7 +42,7 @@ export function DashboardPage({
             <Upload size={17} aria-hidden="true" />
             Upload Document
           </Button>
-          <Button variant="secondary" onClick={() => onNavigate("research")} className="w-full sm:w-auto">
+          <Button variant="secondary" onClick={() => onNavigate("analysis")} className="w-full sm:w-auto">
             <PieChart size={17} aria-hidden="true" />
             Run Analysis
           </Button>

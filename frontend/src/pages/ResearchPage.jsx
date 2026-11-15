@@ -169,16 +169,14 @@ export function ResearchPage({
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-sm font-medium text-primary">Research</p>
+        <p className="text-sm font-medium text-primary">Financial Analysis</p>
 
         <h1 className="mt-2 text-3xl font-semibold">
-          Agentic financial analysis
+          Evidence-backed financial analysis
         </h1>
 
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
-          Run a bounded analysis workflow that retrieves document evidence,
-          executes approved financial tools, and produces a grounded answer
-          with source pages.
+          Run a bounded workflow that retrieves document evidence, executes approved financial tools, and produces a grounded answer with source pages.
         </p>
       </div>
 

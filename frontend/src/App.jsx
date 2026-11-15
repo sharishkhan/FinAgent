@@ -3,24 +3,26 @@ import { AnimatePresence, motion } from "framer-motion";
 
 import { AppShell } from "./components/AppShell.jsx";
 import { getHealth, getSavedDocuments, getSavedResults } from "./lib/api.js";
-import { AnalysisPage } from "./pages/AnalysisPage.jsx";
 import { DashboardPage } from "./pages/DashboardPage.jsx";
 import { DocumentsPage } from "./pages/DocumentsPage.jsx";
+import { HomePage } from "./pages/HomePage.jsx";
 import { ReportsPage } from "./pages/ReportsPage.jsx";
 import { ResearchPage } from "./pages/ResearchPage.jsx";
+import { ResearchAssistantPage } from "./pages/ResearchAssistantPage.jsx";
 import { SettingsPage } from "./pages/SettingsPage.jsx";
 
 const pages = {
+  home: HomePage,
   dashboard: DashboardPage,
   documents: DocumentsPage,
-  research: ResearchPage,
-  analysis: AnalysisPage,
+  research: ResearchAssistantPage,
+  analysis: ResearchPage,
   reports: ReportsPage,
   settings: SettingsPage,
 };
 
 export default function App() {
-  const [activePage, setActivePage] = useState("dashboard");
+  const [activePage, setActivePage] = useState("home");
   const [recentDocuments, setRecentDocuments] = useState([]);
   const [systemStatus, setSystemStatus] = useState("checking");
   const [documentsLoading, setDocumentsLoading] = useState(true);
@@ -29,7 +31,7 @@ export default function App() {
   const [resultsLoading, setResultsLoading] = useState(true);
   const [resultsError, setResultsError] = useState("");
 
-  const Page = pages[activePage] ?? DashboardPage;
+  const Page = pages[activePage] ?? HomePage;
 
   function handleProcessedDocument(document) {
     setRecentDocuments((current) => [

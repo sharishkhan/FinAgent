@@ -6,44 +6,28 @@ import {
   ChevronRight,
   FileArchive,
   FileText,
+  House,
   LayoutDashboard,
   LineChart,
   Menu,
   Moon,
-  Scale,
   Settings,
   Sparkles,
   Sun,
-  UserRound,
   X,
 } from "lucide-react";
 
 const navigation = [
+  { id: "home", label: "Home", icon: House, title: "Home" },
   { id: "dashboard", label: "Overview", icon: LayoutDashboard, title: "Overview" },
   { id: "documents", label: "Documents", icon: FileText, title: "Documents" },
   { id: "research", label: "Research Assistant", icon: Sparkles, title: "Research Assistant" },
   { id: "analysis", label: "Financial Analysis", icon: LineChart, title: "Financial Analysis" },
-  {
-    id: "comparison",
-    label: "Company Comparison",
-    icon: Scale,
-    title: "Company Comparison",
-    disabled: true,
-    state: "Coming soon",
-  },
   { id: "reports", label: "Reports", icon: FileArchive, title: "Reports" },
 ];
 
 const utilityNavigation = [
   { id: "settings", label: "Settings", icon: Settings, title: "Settings" },
-  {
-    id: "profile",
-    label: "Profile",
-    icon: UserRound,
-    title: "Profile",
-    disabled: true,
-    state: "Unavailable",
-  },
 ];
 
 const themeStorageKey = "finagent-theme";
@@ -59,33 +43,22 @@ function getInitialTheme() {
 function NavButton({ item, isActive, collapsed, onNavigate }) {
   const Icon = item.icon;
   const className = `group relative flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm font-medium transition-colors duration-150 ${
-    item.disabled
-      ? "cursor-not-allowed text-slate-500 opacity-70"
-      : isActive
-        ? "bg-primary/15 text-primary"
-        : "text-muted hover:bg-panelRaised hover:text-foreground"
+    isActive
+      ? "bg-primary/15 text-primary"
+      : "text-muted hover:bg-panelRaised hover:text-foreground"
   } ${collapsed ? "justify-center px-2" : ""}`;
 
   const content = (
     <>
       <Icon className="shrink-0" size={18} aria-hidden="true" />
       {!collapsed && <span className="min-w-0 flex-1 truncate">{item.label}</span>}
-      {!collapsed && item.state && <span className="text-[11px] text-slate-500">{item.state}</span>}
       {collapsed && (
         <span className="pointer-events-none absolute left-full z-30 ml-3 hidden whitespace-nowrap rounded-md border border-border bg-panel px-2 py-1.5 text-xs text-foreground shadow-panel group-hover:block">
-          {item.label}{item.state ? ` - ${item.state}` : ""}
+          {item.label}
         </span>
       )}
     </>
   );
-
-  if (item.disabled) {
-    return (
-      <div className={className} aria-disabled="true" title={collapsed ? `${item.label}: ${item.state}` : undefined}>
-        {content}
-      </div>
-    );
-  }
 
   return (
     <button

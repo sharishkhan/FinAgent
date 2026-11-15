@@ -11,9 +11,9 @@
   --panel: 218 39% 12%;
   --panel-raised: 217 34% 16%;
   --sidebar: 220 45% 10%;
-  --primary: 173 80% 40%;
-  --primary-dark: 173 80% 33%;
-  --accent: 207 90% 62%;
+  --primary: 214 92% 60%;
+  --primary-dark: 220 86% 53%;
+  --accent: 174 84% 42%;
   --surface-subtle: 218 35% 15%;
   --surface-hover: 217 31% 22%;
   --subtle: 215 16% 55%;
@@ -41,10 +41,10 @@
   --border: 214 32% 88%;
   --panel: 0 0% 100%;
   --panel-raised: 210 40% 96%;
-  --sidebar: 219 47% 13%;
-  --primary: 173 72% 30%;
-  --primary-dark: 173 72% 24%;
-  --accent: 207 82% 46%;
+  --sidebar: 0 0% 100%;
+  --primary: 214 88% 50%;
+  --primary-dark: 220 82% 44%;
+  --accent: 174 76% 31%;
   --surface-subtle: 210 36% 96%;
   --surface-hover: 210 30% 92%;
   --subtle: 215 14% 46%;
