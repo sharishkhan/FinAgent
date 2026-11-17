@@ -1,0 +1,115 @@
+{
+  "company": "Northstar Components Limited",
+  "note": "ALL FICTIONAL. Rs crore. Standalone unless stated.",
+  "standalone": {
+    "revenue": [
+      2400,
+      2000
+    ],
+    "pbt_before_exceptional": [
+      194,
+      210
+    ],
+    "exceptional": [
+      -120,
+      0
+    ],
+    "pat": [
+      53,
+      157
+    ],
+    "eps": [
+      2.65,
+      7.85
+    ],
+    "total_equity": [
+      980,
+      960
+    ],
+    "total_borrowings": [
+      720,
+      400
+    ],
+    "finance_costs": [
+      56,
+      40
+    ],
+    "total_assets": [
+      2400,
+      2180
+    ]
+  },
+  "consolidated": {
+    "revenue": [
+      3050,
+      2500
+    ],
+    "pat": [
+      93,
+      120
+    ],
+    "exceptional": [
+      -25,
+      0
+    ],
+    "total_equity": [
+      1020,
+      1000
+    ],
+    "total_borrowings": [
+      860,
+      520
+    ]
+  },
+  "ratios_fy26_fy25": {
+    "de": [
+      0.73,
+      0.42
+    ],
+    "cr": [
+      1.17,
+      0.98
+    ],
+    "icr": [
+      4.46,
+      6.25
+    ],
+    "npm": [
+      2.21,
+      7.85
+    ],
+    "ebitda_m": [
+      12.92,
+      15.0
+    ],
+    "ronw": [
+      5.41,
+      16.35
+    ],
+    "rdays": [
+      79.08,
+      69.35
+    ],
+    "ebitda": [
+      310,
+      300
+    ]
+  },
+  "revenue_growth_pct": 20.0,
+  "pages": {
+    "cover": 1,
+    "highlights": 2,
+    "mdna": [
+      3,
+      4
+    ],
+    "ratios": 5,
+    "auditor": 6,
+    "standalone_bs": 7,
+    "standalone_pl": 8,
+    "consolidated_bs": 9,
+    "consolidated_pl": 10,
+    "notes_revenue_finance_borrowings": 11,
+    "notes_exceptional_eps_dividend": 12
+  }
+}

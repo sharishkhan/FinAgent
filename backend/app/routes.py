@@ -22,6 +22,7 @@ from .services.persistence_service import (
     save_result,
 )
 from .services.retrieval_service import RetrievalError, retrieve_relevant_chunks
+from .services.sample_service import SampleDocumentError, load_sample_document
 
 api = Blueprint("api", __name__)
 
@@ -54,6 +55,18 @@ def upload_pdf():
         return jsonify({"success": False, "error": str(exc)}), exc.status_code
 
     return jsonify(result)
+
+
+@api.post("/sample-document")
+def load_sample():
+    try:
+        return jsonify(load_sample_document())
+    except SampleDocumentError as exc:
+        return jsonify({"success": False, "error": str(exc)}), exc.status_code
+    except PDFProcessingError as exc:
+        return jsonify({"success": False, "error": str(exc)}), exc.status_code
+    except PersistenceError as exc:
+        return jsonify({"success": False, "error": str(exc)}), 500
 
 
 @api.post("/documents/<document_id>/summary")
