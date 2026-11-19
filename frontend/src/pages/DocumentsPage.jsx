@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   BarChart3,
   CheckCircle2,
@@ -279,6 +279,12 @@ export function DocumentsPage({
     resetDocumentConversation();
     loadQuestionHistory(normalizedDocument.document_id);
   }
+
+  useEffect(() => {
+    if (!result && recentDocuments.length > 0) {
+      handleOpenSavedDocument(recentDocuments[0]);
+    }
+  }, [recentDocuments, result]);
 
   async function handleAskQuestion() {
     const trimmedQuestion = question.trim();

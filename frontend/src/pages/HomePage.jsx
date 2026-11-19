@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, BrainCircuit, Calculator, FileText, MessageSquareText, Search, ShieldCheck, Upload } from "lucide-react";
 
 import { Button } from "../components/ui/Button.jsx";
+import { loadSampleDocument } from "../lib/api.js";
 
 const proofPoints = [
   { icon: FileText, title: "Every answer shows its pages", description: "See the exact pages and excerpts behind each answer." },
@@ -95,8 +97,36 @@ function ContinueCard({ recentDocuments, savedResults, onNavigate }) {
   );
 }
 
-export function HomePage({ onNavigate, recentDocuments = [], savedResults = [] }) {
+export function HomePage({
+  onNavigate,
+  onDocumentProcessed,
+  onRefreshDocuments,
+  recentDocuments = [],
+  savedResults = [],
+}) {
   const reduceMotion = useReducedMotion();
+  const [isLoadingSample, setIsLoadingSample] = useState(false);
+  const [sampleError, setSampleError] = useState("");
+
+  async function handleLoadSampleDocument() {
+    if (isLoadingSample) {
+      return;
+    }
+
+    setIsLoadingSample(true);
+    setSampleError("");
+
+    try {
+      const result = await loadSampleDocument();
+      onDocumentProcessed?.(result);
+      await onRefreshDocuments?.();
+      onNavigate("documents");
+    } catch (error) {
+      setSampleError(error.message);
+    } finally {
+      setIsLoadingSample(false);
+    }
+  }
 
   return (
     <div className="mx-auto max-w-7xl space-y-16 pb-6 lg:space-y-20 lg:pb-10">
@@ -109,6 +139,18 @@ export function HomePage({ onNavigate, recentDocuments = [], savedResults = [] }
             <Button onClick={() => onNavigate("documents")} className="sm:min-w-40">Upload a report <ArrowRight size={17} aria-hidden="true" /></Button>
             <Button variant="secondary" onClick={() => onNavigate("research")} className="sm:min-w-40">Ask a question <MessageSquareText size={17} aria-hidden="true" /></Button>
           </div>
+          <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+            <button
+              type="button"
+              onClick={handleLoadSampleDocument}
+              disabled={isLoadingSample}
+              className="font-medium text-primary underline underline-offset-4 transition-colors hover:text-primaryDark disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isLoadingSample ? "Loading sample report..." : "No report handy? Try a sample report"}
+            </button>
+            <span className="text-muted">Fictional company, for trying out FinAgent.</span>
+          </div>
+          {sampleError && <p className="mt-2 text-sm text-red-700">{sampleError}</p>}
           <p className="mt-4 max-w-xl text-sm leading-6 text-muted">Stored on your computer. Only the passages needed for an answer are sent to the Gemini AI.</p>
         </div>
 

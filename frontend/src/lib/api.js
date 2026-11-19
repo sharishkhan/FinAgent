@@ -18,6 +18,20 @@ export async function uploadDocument(file) {
   return payload;
 }
 
+export async function loadSampleDocument() {
+  const response = await fetch(`${API_BASE_URL}/api/sample-document`, {
+    method: "POST",
+  });
+
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(payload.error ?? "The sample report could not be loaded.");
+  }
+
+  return payload;
+}
+
 export async function getHealth() {
   const response = await fetch(`${API_BASE_URL}/api/health`);
   if (!response.ok) {
