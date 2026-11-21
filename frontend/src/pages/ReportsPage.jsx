@@ -175,16 +175,14 @@ export function ReportsPage({ recentDocuments = [] }) {
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-sm font-medium text-primary">Reports</p>
+        <p className="text-sm font-medium text-primary">History</p>
 
         <h1 className="mt-2 text-3xl font-semibold">
-          Saved analysis results
+          History
         </h1>
 
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-          Review persisted summaries and analysis outputs saved by the backend.
-          This page reads existing results only; report generation remains a
-          later phase.
+          Saved summaries and analysis results.
         </p>
       </div>
 

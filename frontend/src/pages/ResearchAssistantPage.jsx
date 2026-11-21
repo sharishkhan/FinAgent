@@ -97,7 +97,13 @@ function historyToMessages(entries) {
   ]);
 }
 
-export function ResearchAssistantPage({ recentDocuments, documentsLoading, documentsError }) {
+export function ResearchAssistantPage({
+  recentDocuments,
+  documentsLoading,
+  documentsError,
+  selectedDocumentId: activeDocumentId,
+  onSelectDocument,
+}) {
   const [selectedDocumentId, setSelectedDocumentId] = useState("");
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState([]);
@@ -114,8 +120,12 @@ export function ResearchAssistantPage({ recentDocuments, documentsLoading, docum
   );
 
   useEffect(() => {
-    if (!selectedDocumentId && recentDocuments.length > 0) setSelectedDocumentId(recentDocuments[0].document_id);
-  }, [recentDocuments, selectedDocumentId]);
+    if (activeDocumentId && recentDocuments.some((document) => document.document_id === activeDocumentId)) {
+      setSelectedDocumentId(activeDocumentId);
+    } else if (!selectedDocumentId && recentDocuments.length > 0) {
+      setSelectedDocumentId(recentDocuments[0].document_id);
+    }
+  }, [activeDocumentId, recentDocuments, selectedDocumentId]);
 
   useEffect(() => {
     if (!selectedDocumentId) {
@@ -168,7 +178,7 @@ export function ResearchAssistantPage({ recentDocuments, documentsLoading, docum
 
     try {
       const payload = await askDocumentQuestion(selectedDocumentId, normalizedQuestion);
-      if (!payload.success) throw new Error(payload.error ?? "The research assistant could not answer that question.");
+      if (!payload.success) throw new Error(payload.error ?? "The Ask workspace could not answer that question.");
 
       const storedEntry = { ...payload, id: payload.history_id ?? `response-${Date.now()}`, created_at: new Date().toISOString() };
       setMessages((current) => [
@@ -197,12 +207,12 @@ export function ResearchAssistantPage({ recentDocuments, documentsLoading, docum
     <div className="mx-auto max-w-6xl space-y-5">
       <section className="flex flex-col gap-4 border-b border-border pb-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-sm font-medium text-primary">Research Assistant</p>
+          <p className="text-sm font-medium text-primary">Ask</p>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">Ask grounded questions about a saved financial document. Answers include retrieved source pages and excerpts.</p>
         </div>
         <label className="block min-w-0 lg:w-80">
           <span className="mb-1.5 block text-xs font-medium uppercase tracking-[0.1em] text-muted">Active document</span>
-          <select value={selectedDocumentId} onChange={(event) => setSelectedDocumentId(event.target.value)} disabled={documentsLoading || recentDocuments.length === 0} className="h-10 w-full truncate rounded-md border border-border bg-panel px-3 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10 disabled:cursor-not-allowed disabled:opacity-60">
+          <select value={selectedDocumentId} onChange={(event) => { setSelectedDocumentId(event.target.value); onSelectDocument?.(event.target.value); }} disabled={documentsLoading || recentDocuments.length === 0} className="h-10 w-full truncate rounded-md border border-border bg-panel px-3 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10 disabled:cursor-not-allowed disabled:opacity-60">
             {recentDocuments.length === 0 ? <option value="">No saved documents</option> : recentDocuments.map((document) => <option key={document.document_id} value={document.document_id}>{document.filename ?? "Untitled document"}</option>)}
           </select>
         </label>

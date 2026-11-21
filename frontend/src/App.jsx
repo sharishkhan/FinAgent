@@ -23,6 +23,7 @@ const pages = {
 
 export default function App() {
   const [activePage, setActivePage] = useState("home");
+  const [selectedDocumentId, setSelectedDocumentId] = useState("");
   const [recentDocuments, setRecentDocuments] = useState([]);
   const [systemStatus, setSystemStatus] = useState("checking");
   const [documentsLoading, setDocumentsLoading] = useState(true);
@@ -34,10 +35,19 @@ export default function App() {
   const Page = pages[activePage] ?? HomePage;
 
   function handleProcessedDocument(document) {
+    setSelectedDocumentId(document.document_id);
     setRecentDocuments((current) => [
       document,
       ...current.filter((item) => item.document_id !== document.document_id),
     ]);
+  }
+
+  function handleNavigate(pageId, documentId) {
+    if (documentId) {
+      setSelectedDocumentId(documentId);
+    }
+
+    setActivePage(pageId);
   }
 
   async function loadSavedDocuments() {
@@ -92,7 +102,7 @@ export default function App() {
   }, []);
 
   return (
-    <AppShell activePage={activePage} onNavigate={setActivePage} systemStatus={systemStatus}>
+    <AppShell activePage={activePage} onNavigate={handleNavigate} systemStatus={systemStatus}>
       <AnimatePresence mode="wait">
         <motion.div
           key={activePage}
@@ -109,7 +119,9 @@ export default function App() {
             resultsLoading={resultsLoading}
             resultsError={resultsError}
             systemStatus={systemStatus}
-            onNavigate={setActivePage}
+            onNavigate={handleNavigate}
+            selectedDocumentId={selectedDocumentId}
+            onSelectDocument={setSelectedDocumentId}
             onDocumentProcessed={handleProcessedDocument}
             onRefreshDocuments={loadSavedDocuments}
             onRefreshResults={loadSavedResults}

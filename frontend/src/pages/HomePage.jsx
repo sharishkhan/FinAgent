@@ -85,7 +85,7 @@ function ContinueCard({ recentDocuments, savedResults, onNavigate }) {
       ) : latestResult ? (
         <div className="mt-4">
           <p className="text-sm text-muted">Latest research: <span className="font-medium text-foreground">{getResultTitle(latestResult)}</span>{formatDate(latestResult.created_at) && ` · ${formatDate(latestResult.created_at)}`}</p>
-          <Button variant="secondary" onClick={() => onNavigate("reports")} className="mt-5">Open Reports</Button>
+          <Button variant="secondary" onClick={() => onNavigate("reports")} className="mt-5">Open History</Button>
         </div>
       ) : (
         <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

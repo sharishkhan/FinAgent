@@ -2,24 +2,18 @@ import { useEffect, useRef, useState } from "react";
 import {
   BarChart3,
   CheckCircle2,
-  ChevronDown,
-  ChevronRight,
   Clock,
   Database,
   FileText,
   History,
   Loader2,
-  MessageSquareText,
-  Search,
   Sparkles,
   UploadCloud,
   XCircle,
 } from "lucide-react";
 
 import {
-  askDocumentQuestion,
   generateSummary,
-  getQuestionHistory,
   uploadDocument,
 } from "../lib/api.js";
 import { Button } from "../components/ui/Button.jsx";
@@ -131,6 +125,7 @@ export function DocumentsPage({
   onDocumentProcessed,
   onRefreshDocuments,
   onRefreshResults,
+  onNavigate,
 }) {
   const inputRef = useRef(null);
   const [selectedFile, setSelectedFile] = useState(null);
@@ -142,20 +137,10 @@ export function DocumentsPage({
   const [summary, setSummary] = useState(null);
   const [summaryError, setSummaryError] = useState("");
   const [isSummarizing, setIsSummarizing] = useState(false);
-  const [question, setQuestion] = useState("");
-  const [questionResult, setQuestionResult] = useState(null);
-  const [questionError, setQuestionError] = useState("");
-  const [isAskingQuestion, setIsAskingQuestion] = useState(false);
-  const [pendingQuestion, setPendingQuestion] = useState("");
-  const [openSources, setOpenSources] = useState({});
-  const [questionHistory, setQuestionHistory] = useState([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
-  const [historyError, setHistoryError] = useState("");
 
   function selectFile(file) {
     setResult(null);
     setError("");
-    resetDocumentConversation();
 
     if (!file) {
       setSelectedFile(null);
@@ -186,7 +171,6 @@ export function DocumentsPage({
     setResult(null);
     setSummary(null);
     setSummaryError("");
-    resetDocumentConversation();
 
     let stageTimer;
 
@@ -203,7 +187,6 @@ export function DocumentsPage({
       onDocumentProcessed(payload);
       onRefreshDocuments?.();
       setProcessingStage("Processing complete");
-      loadQuestionHistory(payload.document_id);
     } catch (uploadError) {
       setError(uploadError.message);
       setProcessingStage("");
@@ -241,34 +224,6 @@ export function DocumentsPage({
     }
   }
 
-  function resetDocumentConversation() {
-    setQuestion("");
-    setQuestionResult(null);
-    setQuestionError("");
-    setPendingQuestion("");
-    setOpenSources({});
-    setQuestionHistory([]);
-    setHistoryError("");
-  }
-
-  async function loadQuestionHistory(documentId) {
-    if (!documentId) {
-      return;
-    }
-
-    setHistoryLoading(true);
-    setHistoryError("");
-
-    try {
-      const payload = await getQuestionHistory(documentId);
-      setQuestionHistory(payload.questions ?? []);
-    } catch (historyRequestError) {
-      setHistoryError(historyRequestError.message);
-    } finally {
-      setHistoryLoading(false);
-    }
-  }
-
   function handleOpenSavedDocument(document) {
     const normalizedDocument = normalizeSavedDocument(document);
     setResult(normalizedDocument);
@@ -276,8 +231,6 @@ export function DocumentsPage({
     setError("");
     setSummary(null);
     setSummaryError("");
-    resetDocumentConversation();
-    loadQuestionHistory(normalizedDocument.document_id);
   }
 
   useEffect(() => {
@@ -285,54 +238,6 @@ export function DocumentsPage({
       handleOpenSavedDocument(recentDocuments[0]);
     }
   }, [recentDocuments, result]);
-
-  async function handleAskQuestion() {
-    const trimmedQuestion = question.trim();
-
-    if (!trimmedQuestion) {
-      setQuestionError("Enter a question about the uploaded document.");
-      return;
-    }
-
-    if (!result?.document_id || isAskingQuestion) {
-      return;
-    }
-
-    setIsAskingQuestion(true);
-    setQuestionError("");
-    setPendingQuestion(trimmedQuestion);
-
-    try {
-      const payload = await askDocumentQuestion(
-        result.document_id,
-        trimmedQuestion
-      );
-
-      setQuestionResult(payload);
-      setQuestion("");
-      setPendingQuestion("");
-      setOpenSources({});
-      loadQuestionHistory(result.document_id);
-    } catch (questionRequestError) {
-      setQuestionError(questionRequestError.message);
-    } finally {
-      setIsAskingQuestion(false);
-    }
-  }
-
-  function handleQuestionKeyDown(event) {
-    if (event.key === "Enter" && !event.shiftKey) {
-      event.preventDefault();
-      handleAskQuestion();
-    }
-  }
-
-  function toggleSource(sourceKey) {
-    setOpenSources((current) => ({
-      ...current,
-      [sourceKey]: !current[sourceKey],
-    }));
-  }
 
   const topicMax = Math.max(
     ...(result?.financial_topics ?? []).map((topic) => topic.count),
@@ -784,335 +689,19 @@ export function DocumentsPage({
               </Card>
             </div>
           </div>
-
-          {/* Full-width RAG Question Answering */}
           <Card>
-            <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <div className="flex items-center gap-2">
-                  <div className="flex size-9 items-center justify-center rounded-md bg-slate-100 text-primary">
-                    <MessageSquareText size={18} aria-hidden="true" />
-                  </div>
-
-                  <h2 className="text-base font-semibold">
-                    Ask this Document
-                  </h2>
-                </div>
-
-                <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
-                  Ask a question and FinAgent will answer from retrieved
-                  document passages with source page references.
+                <h2 className="text-base font-semibold">Ask about this document</h2>
+                <p className="mt-2 text-sm leading-6 text-muted">
+                  Ask questions and see the exact pages behind each answer.
                 </p>
               </div>
 
-              {questionResult?.source_pages?.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {questionResult.source_pages.map((page) => (
-                    <span
-                      key={page}
-                      className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700"
-                    >
-                      Source: Page {page}
-                    </span>
-                  ))}
-                </div>
-              )}
+              <Button onClick={() => onNavigate?.("research", result.document_id)} className="w-full sm:w-auto">
+                Open Ask
+              </Button>
             </CardHeader>
-
-            <CardBody className="space-y-5">
-              <div className="space-y-3">
-                <label
-                  className="text-sm font-medium text-slate-800"
-                  htmlFor="document-question"
-                >
-                  Research question
-                </label>
-
-                <textarea
-                  id="document-question"
-                  value={question}
-                  onChange={(event) => {
-                    setQuestion(event.target.value);
-                    if (questionError) {
-                      setQuestionError("");
-                    }
-                  }}
-                  onKeyDown={handleQuestionKeyDown}
-                  disabled={isAskingQuestion}
-                  rows={3}
-                  className="min-h-28 w-full resize-y rounded-md border border-border bg-panel px-4 py-3 text-sm leading-6 text-foreground shadow-sm outline-none transition placeholder:text-muted focus:border-primary focus:ring-4 focus:ring-primary/10 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-muted"
-                  placeholder="Ask a question about this financial document..."
-                />
-
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="text-xs text-muted">
-                    Press Enter to ask, or Shift+Enter for a new line.
-                  </p>
-
-                  <Button
-                    onClick={handleAskQuestion}
-                    disabled={!question.trim() || isAskingQuestion}
-                    className="w-full sm:w-auto"
-                  >
-                    {isAskingQuestion ? (
-                      <Loader2
-                        className="animate-spin"
-                        size={17}
-                        aria-hidden="true"
-                      />
-                    ) : (
-                      <Search size={17} aria-hidden="true" />
-                    )}
-
-                    {isAskingQuestion ? "Retrieving" : "Ask"}
-                  </Button>
-                </div>
-              </div>
-
-              {isAskingQuestion && (
-                <div className="flex items-center gap-3 rounded-md border border-border bg-slate-50 px-4 py-4 text-sm text-muted">
-                  <Loader2
-                    className="animate-spin text-primary"
-                    size={18}
-                    aria-hidden="true"
-                  />
-
-                  <span>
-                    Retrieving relevant passages and generating an answer...
-                  </span>
-                </div>
-              )}
-
-              {pendingQuestion && isAskingQuestion && questionResult && (
-                <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                  Asking: “{pendingQuestion}”. The previous answer remains
-                  below until the new answer is ready.
-                </div>
-              )}
-
-              {questionError && (
-                <div className="flex items-start gap-3 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                  <XCircle
-                    className="mt-0.5 shrink-0"
-                    size={18}
-                    aria-hidden="true"
-                  />
-
-                  <span>{questionError}</span>
-                </div>
-              )}
-
-              {questionResult && (
-                <div className="space-y-4">
-                  <div
-                    className={`rounded-lg border px-5 py-4 ${
-                      questionResult.status === "insufficient_evidence"
-                        ? "border-amber-200 bg-amber-50"
-                        : questionResult.configured === false
-                          ? "border-amber-200 bg-amber-50"
-                          : "border-emerald-200 bg-emerald-50"
-                    }`}
-                  >
-                    <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
-                      <span className="rounded-full bg-panel px-3 py-1 font-medium text-slate-700">
-                        {questionResult.status === "insufficient_evidence"
-                          ? "Insufficient evidence"
-                          : questionResult.configured === false
-                            ? "AI unavailable"
-                            : "Answered from document"}
-                      </span>
-
-                      {questionResult.provider && (
-                        <span className="rounded-full bg-panel px-3 py-1 text-muted">
-                          {questionResult.provider}
-                        </span>
-                      )}
-
-                      {questionResult.model && (
-                        <span className="rounded-full bg-panel px-3 py-1 text-muted">
-                          {questionResult.model}
-                        </span>
-                      )}
-                    </div>
-
-                    <p className="text-xs font-medium uppercase text-muted">
-                      Question
-                    </p>
-
-                    <p className="mt-1 text-sm font-medium text-slate-900">
-                      {questionResult.question}
-                    </p>
-
-                    <div className="mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-800">
-                      {questionResult.answer || questionResult.message}
-                    </div>
-
-                    {questionResult.disclaimer && (
-                      <p className="mt-4 text-xs text-muted">
-                        {questionResult.disclaimer}
-                      </p>
-                    )}
-                  </div>
-
-                  {questionResult.sources?.length > 0 && (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <h3 className="text-sm font-semibold text-slate-900">
-                          Retrieved sources
-                        </h3>
-
-                        <span className="text-xs text-muted">
-                          {questionResult.sources.length} passages
-                        </span>
-                      </div>
-
-                      <div className="grid gap-3 lg:grid-cols-2">
-                        {questionResult.sources.map((source, index) => {
-                          const sourceKey =
-                            source.chunk_id || `${source.page}-${index}`;
-                          const isOpen = openSources[sourceKey] ?? index === 0;
-
-                          return (
-                            <div
-                              key={sourceKey}
-                              className="rounded-lg border border-border bg-slate-50"
-                            >
-                              <button
-                                type="button"
-                                className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
-                                onClick={() => toggleSource(sourceKey)}
-                              >
-                                <div>
-                                  <p className="text-sm font-semibold text-slate-900">
-                                    Source: Page {source.page}
-                                  </p>
-
-                                  <p className="mt-1 text-xs text-muted">
-                                    Score {source.score}
-                                    {source.matched_terms?.length > 0
-                                      ? ` · Matched: ${source.matched_terms.join(", ")}`
-                                      : ""}
-                                  </p>
-                                </div>
-
-                                {isOpen ? (
-                                  <ChevronDown
-                                    className="shrink-0 text-muted"
-                                    size={18}
-                                    aria-hidden="true"
-                                  />
-                                ) : (
-                                  <ChevronRight
-                                    className="shrink-0 text-muted"
-                                    size={18}
-                                    aria-hidden="true"
-                                  />
-                                )}
-                              </button>
-
-                              {isOpen && (
-                                <div className="border-t border-border px-4 py-3">
-                                  <p className="text-sm leading-6 text-slate-700">
-                                    {source.excerpt}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {historyLoading && (
-                <div className="flex items-center gap-3 rounded-md border border-border bg-slate-50 px-4 py-4 text-sm text-muted">
-                  <Loader2
-                    className="animate-spin text-primary"
-                    size={18}
-                    aria-hidden="true"
-                  />
-
-                  <span>Loading saved question history...</span>
-                </div>
-              )}
-
-              {historyError && (
-                <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                  {historyError}
-                </div>
-              )}
-
-              {!historyLoading && questionHistory.length > 0 && (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <h3 className="text-sm font-semibold text-slate-900">
-                      Saved question history
-                    </h3>
-
-                    <span className="text-xs text-muted">
-                      {questionHistory.length} saved
-                    </span>
-                  </div>
-
-                  <div className="grid gap-3">
-                    {questionHistory.slice(0, 5).map((item) => (
-                      <div
-                        key={item.question_id ?? item.id ?? item.created_at}
-                        className="rounded-lg border border-border bg-slate-50 p-4"
-                      >
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                          <p className="text-sm font-semibold text-slate-900">
-                            {item.question}
-                          </p>
-
-                          <span className="shrink-0 text-xs text-muted">
-                            {formatTimestamp(item.created_at)}
-                          </span>
-                        </div>
-
-                        <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
-                          {item.answer || item.message}
-                        </p>
-
-                        {item.source_pages?.length > 0 && (
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            {item.source_pages.map((page) => (
-                              <span
-                                key={page}
-                                className="rounded-full bg-panel px-2.5 py-1 text-xs font-medium text-primary"
-                              >
-                                Page {page}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {!questionResult && !questionError && !isAskingQuestion && (
-                <div className="rounded-lg border border-dashed border-border bg-slate-50 px-5 py-8 text-center">
-                  <MessageSquareText
-                    className="mx-auto text-primary"
-                    size={24}
-                    aria-hidden="true"
-                  />
-
-                  <p className="mt-3 text-sm font-medium text-slate-800">
-                    Ask a document-grounded research question.
-                  </p>
-
-                  <p className="mt-1 text-sm text-muted">
-                    Answers use retrieved excerpts from this uploaded PDF and
-                    show source page references.
-                  </p>
-                </div>
-              )}
-            </CardBody>
           </Card>
 
           {/* Full-width AI Summary */}

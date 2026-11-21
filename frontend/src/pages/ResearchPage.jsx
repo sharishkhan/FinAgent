@@ -169,10 +169,10 @@ export function ResearchPage({
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-sm font-medium text-primary">Financial Analysis</p>
+        <p className="text-sm font-medium text-primary">Analysis</p>
 
         <h1 className="mt-2 text-3xl font-semibold">
-          Evidence-backed financial analysis
+          Evidence-backed analysis
         </h1>
 
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">

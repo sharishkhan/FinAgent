@@ -110,9 +110,9 @@ export function DashboardPage({
         <CardHeader className="flex items-center justify-between">
           <div>
             <h2 className="text-base font-semibold">Recent research</h2>
-            <p className="mt-1 text-sm text-muted">Saved summaries and financial analysis.</p>
+            <p className="mt-1 text-sm text-muted">Saved summaries and analysis.</p>
           </div>
-          <Button variant="ghost" onClick={() => onNavigate("reports")} aria-label="Open reports">
+          <Button variant="ghost" onClick={() => onNavigate("reports")} aria-label="Open history">
             <ArrowUpRight size={18} aria-hidden="true" />
           </Button>
         </CardHeader>

@@ -21,9 +21,9 @@ const navigation = [
   { id: "home", label: "Home", icon: House, title: "Home" },
   { id: "dashboard", label: "Overview", icon: LayoutDashboard, title: "Overview" },
   { id: "documents", label: "Documents", icon: FileText, title: "Documents" },
-  { id: "research", label: "Research Assistant", icon: Sparkles, title: "Research Assistant" },
-  { id: "analysis", label: "Financial Analysis", icon: LineChart, title: "Financial Analysis" },
-  { id: "reports", label: "Reports", icon: FileArchive, title: "Reports" },
+  { id: "research", label: "Ask", icon: Sparkles, title: "Ask" },
+  { id: "analysis", label: "Analysis", icon: LineChart, title: "Analysis" },
+  { id: "reports", label: "History", icon: FileArchive, title: "History" },
 ];
 
 const utilityNavigation = [
