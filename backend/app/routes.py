@@ -8,12 +8,15 @@ from .services.llm_service import (
 from .services.agent_service import AgentAnalysisError, analyze_document_with_agent
 from .services.guards import check_question_guards
 from .services.pdf_service import (
+    DOCUMENT_STORE,
     PDFProcessingError,
     get_processed_document,
     process_pdf_upload,
 )
 from .services.persistence_service import (
     PersistenceError,
+    delete_document,
+    delete_result,
     get_result,
     list_documents,
     list_question_history,
@@ -237,6 +240,33 @@ def analyze_document(document_id):
             return jsonify({"success": False, "error": str(exc)}), 500
 
     return jsonify(result), status_code
+
+
+@api.delete("/documents/<document_id>")
+def delete_saved_document(document_id):
+    try:
+        deleted = delete_document(document_id)
+    except PersistenceError as exc:
+        return jsonify({"success": False, "error": str(exc)}), 500
+
+    if deleted is None:
+        return jsonify({"success": False, "error": "Document not found."}), 404
+
+    DOCUMENT_STORE.pop(document_id, None)
+    return jsonify({"success": True, "document_id": document_id, "deleted": deleted})
+
+
+@api.delete("/results/<int:result_id>")
+def delete_saved_result(result_id):
+    try:
+        deleted = delete_result(result_id)
+    except PersistenceError as exc:
+        return jsonify({"success": False, "error": str(exc)}), 500
+
+    if not deleted:
+        return jsonify({"success": False, "error": "Saved result not found."}), 404
+
+    return jsonify({"success": True, "result_id": result_id})
 
 
 @api.get("/results")

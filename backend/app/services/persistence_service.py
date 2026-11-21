@@ -364,3 +364,44 @@ def get_result(result_id: int) -> dict | None:
         "payload": _json_loads(row["payload_json"], {}),
         "created_at": row["created_at"],
     }
+
+
+def delete_document(document_id: str) -> dict | None:
+    """Delete a document together with its questions and saved results.
+
+    All three deletes happen in ONE transaction: either everything is removed or
+    nothing is. Returns how many questions/results were removed, or None if the
+    document does not exist.
+    """
+    try:
+        with _connect() as connection:
+            exists = connection.execute(
+                "SELECT 1 FROM documents WHERE document_id = ?", (document_id,)
+            ).fetchone()
+            if exists is None:
+                return None
+
+            questions = connection.execute(
+                "DELETE FROM question_history WHERE document_id = ?", (document_id,)
+            ).rowcount
+            results = connection.execute(
+                "DELETE FROM saved_results WHERE document_id = ?", (document_id,)
+            ).rowcount
+            connection.execute("DELETE FROM documents WHERE document_id = ?", (document_id,))
+            connection.commit()
+            return {"questions": questions, "results": results}
+    except sqlite3.Error as exc:
+        raise PersistenceError("Could not delete the document.") from exc
+
+
+def delete_result(result_id: int) -> bool:
+    """Delete one saved result. Returns False if it does not exist."""
+    try:
+        with _connect() as connection:
+            deleted = connection.execute(
+                "DELETE FROM saved_results WHERE id = ?", (result_id,)
+            ).rowcount
+            connection.commit()
+            return deleted > 0
+    except sqlite3.Error as exc:
+        raise PersistenceError("Could not delete the saved result.") from exc
