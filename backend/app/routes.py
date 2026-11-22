@@ -26,6 +26,7 @@ from .services.persistence_service import (
 )
 from .services.retrieval_service import RetrievalError, retrieve_relevant_chunks
 from .services.sample_service import SampleDocumentError, load_sample_document
+from .services.settings_service import check_llm_connection, get_settings_overview
 
 api = Blueprint("api", __name__)
 
@@ -33,6 +34,19 @@ api = Blueprint("api", __name__)
 @api.get("/health")
 def health():
     return jsonify({"status": "ok", "service": "FinAgent backend"})
+
+
+@api.get("/settings")
+def settings_overview():
+    try:
+        return jsonify(get_settings_overview())
+    except PersistenceError as exc:
+        return jsonify({"success": False, "error": str(exc)}), 500
+
+
+@api.post("/settings/test-connection")
+def settings_test_connection():
+    return jsonify(check_llm_connection())
 
 
 @api.get("/documents")

@@ -405,3 +405,15 @@ def delete_result(result_id: int) -> bool:
             return deleted > 0
     except sqlite3.Error as exc:
         raise PersistenceError("Could not delete the saved result.") from exc
+
+
+def get_storage_counts() -> dict:
+    try:
+        with _connect() as connection:
+            return {
+                "documents": connection.execute("SELECT COUNT(*) FROM documents").fetchone()[0],
+                "questions": connection.execute("SELECT COUNT(*) FROM question_history").fetchone()[0],
+                "results": connection.execute("SELECT COUNT(*) FROM saved_results").fetchone()[0],
+            }
+    except sqlite3.Error as exc:
+        raise PersistenceError("Could not read storage counts.") from exc

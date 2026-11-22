@@ -1,4 +1,5 @@
 import json
+import re
 import os
 import urllib.error
 import urllib.request
@@ -197,6 +198,31 @@ def _openai_compatible_text(config: dict, system_content: str, user_content: str
         raise LLMSummaryError("The AI analysis provider returned an unexpected response.") from exc
 
 
+def _describe_gemini_http_error(exc) -> str:
+    """Turn a Gemini HTTP error into a clear message. Never includes the API key."""
+    detail = ""
+    try:
+        body = json.loads(exc.read().decode("utf-8", errors="replace"))
+        detail = str(body.get("error", {}).get("message", ""))
+    except Exception:
+        detail = ""
+    detail = re.sub(r"AIza[0-9A-Za-z_\-]{20,}", "[key hidden]", detail)[:200]
+    lowered = detail.lower()
+    code = getattr(exc, "code", 0)
+
+    if "api key" in lowered and ("not valid" in lowered or "expired" in lowered or "invalid" in lowered):
+        return "Gemini says the API key is not valid or has expired. Check LLM_API_KEY in backend/.env and restart the backend."
+    if code in (401, 403):
+        return "Gemini refused the API key or its permissions. Check LLM_API_KEY in backend/.env."
+    if code == 404:
+        return "Gemini could not find this model. Check LLM_MODEL in backend/.env."
+    if code == 429:
+        return "Gemini quota or rate limit reached. Wait a minute and try again."
+    if code >= 500:
+        return "Gemini is temporarily unavailable. Try again shortly."
+    return f"Gemini rejected the request: {detail}" if detail else "Gemini rejected the request."
+
+
 def _gemini_text(config: dict, prompt: str, temperature: float = 0.1) -> str:
     model = config["model"]
     api_key = config["api_key"]
@@ -232,7 +258,7 @@ def _gemini_text(config: dict, prompt: str, temperature: float = 0.1) -> str:
         with urllib.request.urlopen(request, timeout=60) as response:
             data = json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
-        raise LLMSummaryError("The Gemini analysis provider rejected the request.", exc.code) from exc
+        raise LLMSummaryError(_describe_gemini_http_error(exc), exc.code) from exc
     except urllib.error.URLError as exc:
         raise LLMSummaryError("Could not connect to the Gemini API.") from exc
     except TimeoutError as exc:
@@ -285,17 +311,6 @@ def _generate_text(config: dict, system_content: str, user_content: str, tempera
         400,
     )
 
-    return (
-        "You are answering a question about an uploaded financial PDF. "
-        "Use ONLY the source passages below. Do not use outside knowledge. "
-        "Do not invent financial facts, figures, calculations, or citations. "
-        "If the passages do not provide enough evidence, say: "
-        "\"The uploaded document does not provide enough evidence to answer this question.\" "
-        "Keep the answer concise and cite page numbers inline, for example: (page 3).\n\n"
-        f"Filename: {filename}\n"
-        f"Question: {question}\n\n"
-        f"Source passages:\n{passages}"
-    )
 
 
 def _openai_compatible_summary(config: dict, document: dict) -> str:
@@ -666,10 +681,7 @@ def _gemini_answer(
             data = json.loads(response.read().decode("utf-8"))
 
     except urllib.error.HTTPError as exc:
-        raise LLMSummaryError(
-            "The Gemini answer provider rejected the request.",
-            exc.code,
-        ) from exc
+        raise LLMSummaryError(_describe_gemini_http_error(exc), exc.code) from exc
 
     except urllib.error.URLError as exc:
         raise LLMSummaryError(
