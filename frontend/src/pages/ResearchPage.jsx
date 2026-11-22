@@ -58,6 +58,9 @@ export function ResearchPage({
   documentsLoading,
   documentsError,
   onRefreshResults,
+  selectedDocumentId: activeDocumentId,
+  onSelectDocument,
+  embedded = false,
 }) {
   const [selectedDocumentId, setSelectedDocumentId] = useState("");
   const [question, setQuestion] = useState("");
@@ -138,7 +141,9 @@ export function ResearchPage({
       const result = payload.result ?? payload;
       const analysisPayload = getAnalysisPayload(result);
       setAnalysisResult(analysisPayload);
-      setSelectedDocumentId(result.document_id ?? analysisPayload.document_id ?? "");
+      const documentId = result.document_id ?? analysisPayload.document_id ?? "";
+      setSelectedDocumentId(documentId);
+      onSelectDocument?.(documentId);
       setQuestion(analysisPayload.question ?? "");
     } catch (requestError) {
       setAnalysisError(requestError.message);
@@ -159,16 +164,18 @@ export function ResearchPage({
   }, []);
 
   useEffect(() => {
-    if (!selectedDocumentId && recentDocuments.length > 0) {
+    if (activeDocumentId && recentDocuments.some((document) => document.document_id === activeDocumentId)) {
+      setSelectedDocumentId(activeDocumentId);
+    } else if (!selectedDocumentId && recentDocuments.length > 0) {
       setSelectedDocumentId(recentDocuments[0].document_id);
     }
-  }, [recentDocuments, selectedDocumentId]);
+  }, [activeDocumentId, recentDocuments, selectedDocumentId]);
 
   const result = getAnalysisPayload(analysisResult);
 
   return (
     <div className="space-y-6">
-      <div>
+      {!embedded && <div>
         <p className="text-sm font-medium text-primary">Analysis</p>
 
         <h1 className="mt-2 text-3xl font-semibold">
@@ -178,7 +185,7 @@ export function ResearchPage({
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
           Run a bounded workflow that retrieves document evidence, executes approved financial tools, and produces a grounded answer with source pages.
         </p>
-      </div>
+      </div>}
 
       <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
         <div className="space-y-6">
@@ -203,14 +210,14 @@ export function ResearchPage({
 
             <CardBody className="space-y-5">
               <div className="space-y-2">
-                <label
+                {!activeDocumentId && <label
                   className="text-sm font-medium text-slate-800"
                   htmlFor="agent-document"
                 >
                   Document
-                </label>
+                </label>}
 
-                {documentsLoading ? (
+                {!activeDocumentId && (documentsLoading ? (
                   <div className="rounded-md border border-dashed border-border bg-slate-50 px-4 py-5 text-sm text-muted">
                     Loading saved documents...
                   </div>
@@ -233,6 +240,7 @@ export function ResearchPage({
                     value={selectedDocumentId}
                     onChange={(event) => {
                       setSelectedDocumentId(event.target.value);
+                      onSelectDocument?.(event.target.value);
                       setAnalysisResult(null);
                       setAnalysisError("");
                     }}
@@ -247,7 +255,7 @@ export function ResearchPage({
                       </option>
                     ))}
                   </select>
-                )}
+                ))}
               </div>
 
               {selectedDocument && (

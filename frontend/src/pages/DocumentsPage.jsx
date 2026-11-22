@@ -13,11 +13,15 @@ import {
 } from "lucide-react";
 
 import {
+  deleteDocument,
   generateSummary,
+  loadSampleDocument,
   uploadDocument,
 } from "../lib/api.js";
 import { Button } from "../components/ui/Button.jsx";
 import { Card, CardBody, CardHeader } from "../components/ui/Card.jsx";
+import { ResearchAssistantPage } from "./ResearchAssistantPage.jsx";
+import { ResearchPage } from "./ResearchPage.jsx";
 
 function formatNumber(value) {
   return Number(value ?? 0).toLocaleString();
@@ -125,7 +129,9 @@ export function DocumentsPage({
   onDocumentProcessed,
   onRefreshDocuments,
   onRefreshResults,
-  onNavigate,
+  onDocumentDeleted,
+  selectedDocumentId,
+  onSelectDocument,
 }) {
   const inputRef = useRef(null);
   const [selectedFile, setSelectedFile] = useState(null);
@@ -137,6 +143,11 @@ export function DocumentsPage({
   const [summary, setSummary] = useState(null);
   const [summaryError, setSummaryError] = useState("");
   const [isSummarizing, setIsSummarizing] = useState(false);
+  const [workspaceTab, setWorkspaceTab] = useState("overview");
+  const [isLoadingSample, setIsLoadingSample] = useState(false);
+  const [sampleError, setSampleError] = useState("");
+  const [deleteError, setDeleteError] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
 
   function selectFile(file) {
     setResult(null);
@@ -199,6 +210,57 @@ export function DocumentsPage({
     }
   }
 
+  async function handleLoadSample() {
+    if (isLoadingSample) return;
+
+    setIsLoadingSample(true);
+    setSampleError("");
+
+    try {
+      const payload = await loadSampleDocument();
+      await onRefreshDocuments?.();
+      onSelectDocument?.(payload.document_id);
+      setWorkspaceTab("overview");
+    } catch (sampleLoadError) {
+      setSampleError(sampleLoadError.message);
+    } finally {
+      setIsLoadingSample(false);
+    }
+  }
+
+  async function handleDeleteDocument() {
+    if (!result?.document_id || isDeleting) return;
+
+    await handleDeleteDocumentFor(result.document_id, result.filename);
+  }
+
+  async function handleDeleteSavedDocument(document) {
+    await handleDeleteDocumentFor(document.document_id, document.filename);
+  }
+
+  async function handleDeleteDocumentFor(documentId, filename) {
+    if (!documentId || isDeleting) return;
+
+    if (!window.confirm(`Delete ${filename ?? "this document"}? This also removes its saved questions and analyses. This can't be undone.`)) {
+      return;
+    }
+
+    setIsDeleting(true);
+    setDeleteError("");
+    try {
+      await deleteDocument(documentId);
+      onDocumentDeleted?.(documentId);
+      setResult(null);
+      setSummary(null);
+      onRefreshDocuments?.();
+      onRefreshResults?.();
+    } catch (deleteRequestError) {
+      setDeleteError(deleteRequestError.message);
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
   async function handleGenerateSummary() {
     if (!result?.document_id) {
       return;
@@ -231,13 +293,31 @@ export function DocumentsPage({
     setError("");
     setSummary(null);
     setSummaryError("");
+    setWorkspaceTab("overview");
+    onSelectDocument?.(normalizedDocument.document_id);
+  }
+
+  function handleCloseWorkspace() {
+    setResult(null);
+    setSummary(null);
+    setSummaryError("");
+    setDeleteError("");
+    onSelectDocument?.("");
   }
 
   useEffect(() => {
-    if (!result && recentDocuments.length > 0) {
-      handleOpenSavedDocument(recentDocuments[0]);
+    if (!selectedDocumentId) {
+      return;
     }
-  }, [recentDocuments, result]);
+
+    const selectedDocument = recentDocuments.find(
+      (document) => document.document_id === selectedDocumentId
+    );
+
+    if (selectedDocument && selectedDocument.document_id !== result?.document_id) {
+      handleOpenSavedDocument(selectedDocument);
+    }
+  }, [recentDocuments, result?.document_id, selectedDocumentId]);
 
   const topicMax = Math.max(
     ...(result?.financial_topics ?? []).map((topic) => topic.count),
@@ -250,6 +330,7 @@ export function DocumentsPage({
 
   return (
     <div className="space-y-6">
+      {!result && <>
       <div>
         <p className="text-sm font-medium text-primary">Documents</p>
 
@@ -317,9 +398,9 @@ export function DocumentsPage({
             </p>
 
             <p className="mt-2 max-w-lg text-sm leading-6 text-muted">
-              PDF only. The backend processes a temporary copy, extracts text
-              with PyMuPDF, and does not send document contents to external
-              APIs.
+              Text is extracted on your computer. When you ask a question or
+              generate a summary, only the relevant passages are sent to the
+              Gemini AI.
             </p>
           </div>
 
@@ -349,6 +430,13 @@ export function DocumentsPage({
 
               {isUploading ? "Processing" : "Upload Document"}
             </Button>
+          </div>
+
+          <div className="text-sm">
+            <button type="button" onClick={handleLoadSample} disabled={isLoadingSample} className="font-medium text-primary underline underline-offset-4 disabled:cursor-not-allowed disabled:opacity-60">
+              {isLoadingSample ? "Loading sample report..." : "Try a sample report"}
+            </button>
+            {sampleError && <p className="mt-2 text-red-700">{sampleError}</p>}
           </div>
 
           {processingStage && (
@@ -432,8 +520,13 @@ export function DocumentsPage({
           </Button>
         </CardHeader>
 
-        <CardBody>
-          {documentsLoading ? (
+          <CardBody>
+            {deleteError && (
+              <p className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {deleteError}
+              </p>
+            )}
+            {documentsLoading ? (
             <div className="rounded-md border border-dashed border-border bg-slate-50 px-4 py-8 text-center">
               <p className="text-sm font-medium text-foreground">
                 Loading saved documents
@@ -458,18 +551,10 @@ export function DocumentsPage({
           ) : (
             <div className="grid gap-3 lg:grid-cols-2">
               {recentDocuments.map((document) => {
-                const isSelected = result?.document_id === document.document_id;
-
                 return (
-                  <button
+                  <div
                     key={document.document_id}
-                    type="button"
-                    onClick={() => handleOpenSavedDocument(document)}
-                    className={`rounded-lg border p-4 text-left transition ${
-                      isSelected
-                        ? "border-primary bg-emerald-50"
-                        : "border-border bg-slate-50 hover:bg-slate-100"
-                    }`}
+                    className="rounded-lg border border-border bg-slate-50 p-4"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
@@ -482,15 +567,6 @@ export function DocumentsPage({
                         </p>
                       </div>
 
-                      <span
-                        className={`rounded-full px-2 py-1 text-xs font-medium ${
-                          isSelected
-                            ? "bg-panel text-primary"
-                            : "bg-panel text-muted"
-                        }`}
-                      >
-                        {isSelected ? "Open" : "Open"}
-                      </span>
                     </div>
 
                     <p className="mt-3 max-h-10 overflow-hidden text-xs leading-5 text-muted">
@@ -501,18 +577,51 @@ export function DocumentsPage({
                       <Clock size={14} aria-hidden="true" />
                       {formatTimestamp(document.processed_at)}
                     </div>
-                  </button>
+                    <div className="mt-4 flex gap-2">
+                      <Button variant="secondary" className="flex-1" onClick={() => handleOpenSavedDocument(document)}>Open</Button>
+                      <Button variant="ghost" disabled={isDeleting} onClick={() => handleDeleteSavedDocument(document)}>Delete</Button>
+                    </div>
+                  </div>
                 );
               })}
             </div>
           )}
         </CardBody>
       </Card>
+      </>}
 
       {result && (
         <>
+          <Card>
+            <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <p className="text-sm text-muted">
+                  <button type="button" onClick={handleCloseWorkspace} className="hover:text-foreground">Documents</button>
+                  {" / "}{result.filename}
+                </p>
+                <h2 className="mt-2 truncate text-xl font-semibold" title={result.filename}>{result.filename}</h2>
+                <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted">
+                  <span className="rounded-full bg-panelRaised px-3 py-1">{formatNumber(result.pages)} pages</span>
+                  <span className="rounded-full bg-panelRaised px-3 py-1">{formatNumber(result.words)} words</span>
+                </div>
+              </div>
+              <Button variant="ghost" disabled={isDeleting} onClick={handleDeleteDocument} className="w-full sm:w-auto">{isDeleting ? "Deleting" : "Delete"}</Button>
+            </CardHeader>
+            {deleteError && <CardBody><p className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{deleteError}</p></CardBody>}
+          </Card>
+
+          <div className="flex gap-1 border-b border-border" role="tablist" aria-label="Document workspace">
+            {["overview", "ask", "analysis"].map((tab) => (
+              <button key={tab} type="button" role="tab" aria-selected={workspaceTab === tab} onClick={() => setWorkspaceTab(tab)} className={`border-b-2 px-4 py-3 text-sm font-medium capitalize transition-colors ${workspaceTab === tab ? "border-primary text-primary" : "border-transparent text-muted hover:text-foreground"}`}>
+                {tab}
+              </button>
+            ))}
+          </div>
+
+          {workspaceTab === "overview" && (
+          <div className="flex flex-col gap-6">
           {/* Main document analysis area */}
-          <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+          <div className="order-2 grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
             {/* Left column */}
             <div className="space-y-6">
               <Card>
@@ -689,23 +798,8 @@ export function DocumentsPage({
               </Card>
             </div>
           </div>
-          <Card>
-            <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="text-base font-semibold">Ask about this document</h2>
-                <p className="mt-2 text-sm leading-6 text-muted">
-                  Ask questions and see the exact pages behind each answer.
-                </p>
-              </div>
-
-              <Button onClick={() => onNavigate?.("research", result.document_id)} className="w-full sm:w-auto">
-                Open Ask
-              </Button>
-            </CardHeader>
-          </Card>
-
           {/* Full-width AI Summary */}
-          <Card>
+          <Card className="order-1">
             <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <div className="flex items-center gap-2">
@@ -812,6 +906,31 @@ export function DocumentsPage({
               )}
             </CardBody>
           </Card>
+          </div>
+          )}
+
+          {workspaceTab === "ask" && (
+            <ResearchAssistantPage
+              recentDocuments={recentDocuments}
+              documentsLoading={documentsLoading}
+              documentsError={documentsError}
+              selectedDocumentId={result.document_id}
+              onSelectDocument={onSelectDocument}
+              embedded
+            />
+          )}
+
+          {workspaceTab === "analysis" && (
+            <ResearchPage
+              recentDocuments={recentDocuments}
+              documentsLoading={documentsLoading}
+              documentsError={documentsError}
+              onRefreshResults={onRefreshResults}
+              selectedDocumentId={result.document_id}
+              onSelectDocument={onSelectDocument}
+              embedded
+            />
+          )}
         </>
       )}
     </div>

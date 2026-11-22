@@ -42,6 +42,12 @@ export default function App() {
     ]);
   }
 
+  function handleDocumentDeleted(documentId) {
+    setRecentDocuments((current) => current.filter((document) => document.document_id !== documentId));
+    setSavedResults((current) => current.filter((result) => result.document_id !== documentId));
+    setSelectedDocumentId((current) => current === documentId ? "" : current);
+  }
+
   function handleNavigate(pageId, documentId) {
     if (documentId) {
       setSelectedDocumentId(documentId);
@@ -123,6 +129,7 @@ export default function App() {
             selectedDocumentId={selectedDocumentId}
             onSelectDocument={setSelectedDocumentId}
             onDocumentProcessed={handleProcessedDocument}
+            onDocumentDeleted={handleDocumentDeleted}
             onRefreshDocuments={loadSavedDocuments}
             onRefreshResults={loadSavedResults}
           />

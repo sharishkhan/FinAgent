@@ -103,6 +103,7 @@ export function ResearchAssistantPage({
   documentsError,
   selectedDocumentId: activeDocumentId,
   onSelectDocument,
+  embedded = false,
 }) {
   const [selectedDocumentId, setSelectedDocumentId] = useState("");
   const [question, setQuestion] = useState("");
@@ -205,18 +206,18 @@ export function ResearchAssistantPage({
 
   return (
     <div className="mx-auto max-w-6xl space-y-5">
-      <section className="flex flex-col gap-4 border-b border-border pb-5 lg:flex-row lg:items-end lg:justify-between">
+      {!embedded && <section className="flex flex-col gap-4 border-b border-border pb-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-sm font-medium text-primary">Ask</p>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">Ask grounded questions about a saved financial document. Answers include retrieved source pages and excerpts.</p>
         </div>
-        <label className="block min-w-0 lg:w-80">
+        {!activeDocumentId && <label className="block min-w-0 lg:w-80">
           <span className="mb-1.5 block text-xs font-medium uppercase tracking-[0.1em] text-muted">Active document</span>
           <select value={selectedDocumentId} onChange={(event) => { setSelectedDocumentId(event.target.value); onSelectDocument?.(event.target.value); }} disabled={documentsLoading || recentDocuments.length === 0} className="h-10 w-full truncate rounded-md border border-border bg-panel px-3 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10 disabled:cursor-not-allowed disabled:opacity-60">
             {recentDocuments.length === 0 ? <option value="">No saved documents</option> : recentDocuments.map((document) => <option key={document.document_id} value={document.document_id}>{document.filename ?? "Untitled document"}</option>)}
           </select>
-        </label>
-      </section>
+        </label>}
+      </section>}
 
       {documentsError && <p className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{documentsError}</p>}
       {documentsLoading ? <LoadingState label="Loading document library" description="Restoring saved documents for research." /> : recentDocuments.length === 0 ? (

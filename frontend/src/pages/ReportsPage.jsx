@@ -11,7 +11,7 @@ import {
   XCircle,
 } from "lucide-react";
 
-import { getSavedResult, getSavedResults } from "../lib/api.js";
+import { deleteSavedResult, getSavedResult, getSavedResults } from "../lib/api.js";
 import { Button } from "../components/ui/Button.jsx";
 import { Card, CardBody, CardHeader } from "../components/ui/Card.jsx";
 
@@ -134,6 +134,7 @@ export function ReportsPage({ recentDocuments = [] }) {
   const [selectedResult, setSelectedResult] = useState(null);
   const [selectedLoading, setSelectedLoading] = useState(false);
   const [selectedError, setSelectedError] = useState("");
+  const [deletingResultId, setDeletingResultId] = useState(null);
 
   async function loadResults() {
     setIsLoading(true);
@@ -165,6 +166,29 @@ export function ReportsPage({ recentDocuments = [] }) {
       setSelectedError(resultError.message);
     } finally {
       setSelectedLoading(false);
+    }
+  }
+
+  async function handleDeleteResult(result) {
+    const resultId = result.result_id ?? result.id;
+    if (!resultId || deletingResultId) return;
+
+    if (!window.confirm(`Delete ${getResultTitle(result)}? This can't be undone.`)) {
+      return;
+    }
+
+    setDeletingResultId(resultId);
+    setError("");
+    try {
+      await deleteSavedResult(resultId);
+      setResults((current) => current.filter((item) => (item.result_id ?? item.id) !== resultId));
+      if ((selectedResult?.result_id ?? selectedResult?.id) === resultId) {
+        setSelectedResult(null);
+      }
+    } catch (deleteError) {
+      setError(deleteError.message);
+    } finally {
+      setDeletingResultId(null);
     }
   }
 
@@ -259,16 +283,15 @@ export function ReportsPage({ recentDocuments = [] }) {
                 const documentFilename = getDocumentFilename(result, recentDocuments);
 
                   return (
-                    <button
+                    <div
                       key={resultId}
-                      type="button"
-                      onClick={() => handleOpenResult(resultId)}
                       className={`w-full rounded-lg border p-4 text-left transition ${
                         isSelected
                           ? "border-primary bg-emerald-50"
                           : "border-border bg-slate-50 hover:bg-slate-100"
                       }`}
                     >
+                      <button type="button" onClick={() => handleOpenResult(resultId)} className="w-full text-left">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="truncate text-sm font-semibold text-slate-900" title={getResultTitle(result)}>
@@ -300,7 +323,11 @@ export function ReportsPage({ recentDocuments = [] }) {
                           </span>
                         )}
                       </div>
-                    </button>
+                      </button>
+                      <Button variant="ghost" className="mt-3" disabled={deletingResultId === resultId} onClick={() => handleDeleteResult(result)}>
+                        {deletingResultId === resultId ? "Deleting" : "Delete"}
+                      </Button>
+                    </div>
                   );
                 })}
               </div>

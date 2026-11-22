@@ -51,6 +51,19 @@ export async function getSavedDocuments() {
   return payload;
 }
 
+export async function deleteDocument(documentId) {
+  const response = await fetch(`${API_BASE_URL}/api/documents/${documentId}`, {
+    method: "DELETE",
+  });
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(payload.error ?? "The document could not be deleted.");
+  }
+
+  return payload;
+}
+
 export async function generateSummary(documentId) {
   const response = await fetch(`${API_BASE_URL}/api/documents/${documentId}/summary`, {
     method: "POST",
@@ -129,6 +142,19 @@ export async function getSavedResult(resultId) {
 
   if (!response.ok) {
     throw new Error(payload.error ?? "Saved result could not be loaded.");
+  }
+
+  return payload;
+}
+
+export async function deleteSavedResult(resultId) {
+  const response = await fetch(`${API_BASE_URL}/api/results/${resultId}`, {
+    method: "DELETE",
+  });
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(payload.error ?? "The saved result could not be deleted.");
   }
 
   return payload;
