@@ -40,6 +40,30 @@ export async function getHealth() {
   return response.json();
 }
 
+export async function getSettings() {
+  const response = await fetch(`${API_BASE_URL}/api/settings`);
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(payload.error ?? "Settings could not be loaded.");
+  }
+
+  return payload;
+}
+
+export async function testConnection() {
+  const response = await fetch(`${API_BASE_URL}/api/settings/test-connection`, {
+    method: "POST",
+  });
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(payload.error ?? "The connection test could not be completed.");
+  }
+
+  return payload;
+}
+
 export async function getSavedDocuments() {
   const response = await fetch(`${API_BASE_URL}/api/documents`);
   const payload = await response.json().catch(() => ({}));
