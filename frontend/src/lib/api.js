@@ -75,6 +75,17 @@ export async function getSavedDocuments() {
   return payload;
 }
 
+export async function getDocumentFinancials(documentId) {
+  const response = await fetch(`${API_BASE_URL}/api/documents/${documentId}/financials`);
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(payload.error ?? "Financial figures could not be loaded.");
+  }
+
+  return payload;
+}
+
 export async function deleteDocument(documentId) {
   const response = await fetch(`${API_BASE_URL}/api/documents/${documentId}`, {
     method: "DELETE",

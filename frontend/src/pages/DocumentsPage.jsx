@@ -14,6 +14,7 @@ import {
 
 import {
   deleteDocument,
+  getDocumentFinancials,
   generateSummary,
   loadSampleDocument,
   uploadDocument,
@@ -22,6 +23,7 @@ import { Button } from "../components/ui/Button.jsx";
 import { Card, CardBody, CardHeader } from "../components/ui/Card.jsx";
 import { ResearchAssistantPage } from "./ResearchAssistantPage.jsx";
 import { ResearchPage } from "./ResearchPage.jsx";
+import { KeyFigures } from "../components/KeyFigures.jsx";
 
 function formatNumber(value) {
   return Number(value ?? 0).toLocaleString();
@@ -148,6 +150,10 @@ export function DocumentsPage({
   const [sampleError, setSampleError] = useState("");
   const [deleteError, setDeleteError] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
+  const [financials, setFinancials] = useState(null);
+  const [financialsError, setFinancialsError] = useState("");
+  const [isLoadingFinancials, setIsLoadingFinancials] = useState(false);
+  const [financialBasis, setFinancialBasis] = useState("");
 
   function selectFile(file) {
     setResult(null);
@@ -319,6 +325,37 @@ export function DocumentsPage({
     }
   }, [recentDocuments, result?.document_id, selectedDocumentId]);
 
+  useEffect(() => {
+    if (!result?.document_id) {
+      setFinancials(null);
+      setFinancialsError("");
+      setFinancialBasis("");
+      return;
+    }
+
+    let active = true;
+    setFinancials(null);
+    setFinancialsError("");
+    setIsLoadingFinancials(true);
+
+    getDocumentFinancials(result.document_id)
+      .then((payload) => {
+        if (!active) return;
+        const statements = payload.statements ?? {};
+        const defaultBasis = statements.standalone ? "standalone" : statements.consolidated ? "consolidated" : Object.keys(statements)[0] ?? "";
+        setFinancials(payload);
+        setFinancialBasis(defaultBasis);
+      })
+      .catch((financialsRequestError) => {
+        if (active) setFinancialsError(financialsRequestError.message);
+      })
+      .finally(() => {
+        if (active) setIsLoadingFinancials(false);
+      });
+
+    return () => { active = false; };
+  }, [result?.document_id]);
+
   const topicMax = Math.max(
     ...(result?.financial_topics ?? []).map((topic) => topic.count),
     1
@@ -327,6 +364,8 @@ export function DocumentsPage({
   const textCoverage = result?.pages
     ? Math.round((result.text_pages / result.pages) * 100)
     : 0;
+  const availableBases = Object.keys(financials?.statements ?? {});
+  const showBasisToggle = availableBases.includes("standalone") && availableBases.includes("consolidated");
 
   return (
     <div className="space-y-6">
@@ -604,6 +643,20 @@ export function DocumentsPage({
                   <span className="rounded-full bg-panelRaised px-3 py-1">{formatNumber(result.pages)} pages</span>
                   <span className="rounded-full bg-panelRaised px-3 py-1">{formatNumber(result.words)} words</span>
                 </div>
+                {showBasisToggle ? (
+                  <div className="mt-4 inline-flex rounded-md border border-border bg-panelRaised p-1" role="group" aria-label="Financial statement basis">
+                    {[
+                      ["standalone", "Standalone"],
+                      ["consolidated", "Consolidated"],
+                    ].map(([basis, label]) => (
+                      <button key={basis} type="button" disabled={!availableBases.includes(basis)} onClick={() => setFinancialBasis(basis)} className={`rounded px-3 py-1.5 text-xs font-medium transition-colors ${financialBasis === basis ? "bg-primary text-slate-950" : "text-muted hover:text-foreground"} disabled:cursor-not-allowed disabled:opacity-40`}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                ) : financialBasis && (
+                  <span className="mt-4 inline-flex rounded-full bg-panelRaised px-3 py-1 text-xs font-medium capitalize text-muted">{financialBasis}</span>
+                )}
               </div>
               <Button variant="ghost" disabled={isDeleting} onClick={handleDeleteDocument} className="w-full sm:w-auto">{isDeleting ? "Deleting" : "Delete"}</Button>
             </CardHeader>
@@ -620,6 +673,15 @@ export function DocumentsPage({
 
           {workspaceTab === "overview" && (
           <div className="flex flex-col gap-6">
+          <div className="order-1">
+            {isLoadingFinancials ? (
+              <Card><CardHeader><h2 className="text-base font-semibold">Key figures</h2></CardHeader><CardBody><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{[0, 1, 2, 3].map((item) => <div key={item} className="h-32 animate-pulse rounded-lg bg-panelRaised" />)}</div></CardBody></Card>
+            ) : financialsError ? (
+              <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{financialsError}</div>
+            ) : financials ? (
+              <KeyFigures financials={financials} basis={financialBasis} />
+            ) : null}
+          </div>
           {/* Main document analysis area */}
           <div className="order-2 grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
             {/* Left column */}
