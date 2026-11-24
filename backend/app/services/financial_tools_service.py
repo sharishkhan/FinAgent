@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from .retrieval_service import RetrievalError, retrieve_relevant_chunks
+from .verified_figures_service import build_verified_figures
 
 
 class FinancialToolError(Exception):
@@ -117,6 +118,7 @@ REGISTERED_TOOLS = {
     "search_document": search_document,
     "calculate_revenue_growth": calculate_revenue_growth,
     "calculate_profit_margin": calculate_profit_margin,
+    "get_verified_figures": build_verified_figures,
 }
 
 
@@ -151,5 +153,8 @@ def execute_financial_tool(name: str, inputs: dict, document: dict) -> dict:
             revenue_label=inputs.get("revenue_label"),
             evidence=inputs.get("evidence"),
         )
+
+    if name == "get_verified_figures":
+        return build_verified_figures(document, str(inputs.get("question", "")))
 
     raise FinancialToolError(f"Tool '{name}' is not approved for execution.", 400)

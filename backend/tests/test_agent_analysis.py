@@ -235,7 +235,10 @@ class AgentAnalysisEndpointTest(unittest.TestCase):
                 "Calculate revenue growth and profit margin from reported figures.",
             )
 
-        self.assertEqual(len(result["tools_executed"]), 4)
+        # get_verified_figures is a fixed step the agent always takes, not a tool the LLM chose,
+        # so the limit applies to search_document plus the LLM-planned calculation calls.
+        planned = [trace for trace in result["tools_executed"] if trace["tool"] != "get_verified_figures"]
+        self.assertEqual(len(planned), 4)
         self.assertNotIn("run_python", [trace["tool"] for trace in result["tools_executed"]])
         self.assertTrue(any("Unapproved tool" in item for item in result["limitations"]))
         self.assertTrue(any("tool-call limit" in item for item in result["limitations"]))

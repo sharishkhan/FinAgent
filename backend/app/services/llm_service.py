@@ -5,6 +5,9 @@ import urllib.error
 import urllib.request
 
 
+from .verified_figures_service import format_for_prompt as format_verified_figures
+
+
 class LLMSummaryError(Exception):
     def __init__(self, message: str, status_code: int = 502) -> None:
         super().__init__(message)
@@ -130,6 +133,7 @@ def _build_agent_final_prompt(
     calculations: list[dict],
     tool_trace: list[dict],
     filename: str,
+    verified_figures: dict | None = None,
 ) -> str:
     passages = "\n\n".join(
         (
@@ -139,14 +143,30 @@ def _build_agent_final_prompt(
         for index, source in enumerate(sources, start=1)
     )
 
+    figures_block = format_verified_figures(verified_figures)
+    figures_section = ""
+    if figures_block:
+        figures_section = (
+            "Verified statement figures were read directly from the financial statements and "
+            "cross-checked. When one of them answers the question, use it and cite its statement "
+            "page; prefer it over the loose passages if they differ. Always say whether a figure is "
+            "standalone or consolidated, and if the question does not say which, give both.\n"
+            f"Verified statement figures:\n{figures_block}\n\n"
+        )
+        tool_trace = [
+            {"tool": item.get("tool"), "status": item.get("status")} if item.get("tool") == "get_verified_figures" else item
+            for item in tool_trace
+        ]
+
     return (
         "You are a bounded financial analysis assistant. Answer using ONLY the "
-        "retrieved passages and the verified calculation outputs below. Do not use "
-        "outside knowledge. Do not invent financial facts, figures, dates, or citations. "
+        "retrieved passages, the verified statement figures and the verified calculation outputs below. "
+        "Do not use outside knowledge. Do not invent financial facts, figures, dates, or citations. "
         "If evidence is missing, say so clearly. Keep the answer concise, cite source "
         "pages inline, and do not provide investment advice.\n\n"
         f"Filename: {filename}\n"
         f"Question: {question}\n\n"
+        f"{figures_section}"
         f"Retrieved passages:\n{passages}\n\n"
         f"Verified calculations:\n{json.dumps(calculations, ensure_ascii=True, indent=2)}\n\n"
         f"Executed tool trace:\n{json.dumps(tool_trace, ensure_ascii=True, indent=2)}"
@@ -882,6 +902,7 @@ def generate_agent_final_answer(
     calculations: list[dict],
     tool_trace: list[dict],
     filename: str,
+    verified_figures: dict | None = None,
 ) -> dict:
     config = get_llm_config()
 
@@ -902,6 +923,7 @@ def generate_agent_final_answer(
         calculations=calculations,
         tool_trace=tool_trace,
         filename=filename,
+        verified_figures=verified_figures,
     )
     answer = _generate_text(
         config=config,

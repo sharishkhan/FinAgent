@@ -173,6 +173,10 @@ def analyze_document_with_agent(document: dict, question: str) -> dict:
     )
     tool_trace.append(search_trace)
 
+    figures_trace = _execute_tool_trace("get_verified_figures", {"question": normalized_question}, document)
+    tool_trace.append(figures_trace)
+    verified_figures = figures_trace.get("output") if figures_trace.get("status") == "success" else None
+
     sources = _collect_sources(tool_trace)
     source_pages = sorted({source["page"] for source in sources})
 
@@ -234,6 +238,7 @@ def analyze_document_with_agent(document: dict, question: str) -> dict:
             calculations=calculations,
             tool_trace=tool_trace,
             filename=document["filename"],
+            verified_figures=verified_figures,
         )
     except LLMSummaryError as exc:
         raise AgentAnalysisError(str(exc), exc.status_code) from exc
@@ -269,6 +274,7 @@ def analyze_document_with_agent(document: dict, question: str) -> dict:
         "answer": final_answer["answer"],
         "findings": _build_findings(sources, calculations),
         "calculations": calculations,
+        "verified_figures": verified_figures,
         "source_pages": source_pages,
         "sources": sources,
         "tools_executed": tool_trace,
