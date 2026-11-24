@@ -55,6 +55,53 @@ def _execute_tool_trace(tool_name: str, inputs: dict, document: dict) -> dict:
     return trace_item
 
 
+def _verified_calculations(verified: dict | None, calculation_calls: list[dict]):
+    """Replace planner-chosen margin/growth calls with calculations from the verified statements.
+
+    The planner picks its inputs from loose passages, which can mix standalone and consolidated
+    numbers. When the statements were read successfully, their figures are used instead.
+    Returns (remaining_calls, verified_calculations).
+    """
+    if not verified or not verified.get("metrics"):
+        return calculation_calls, []
+
+    by_key: dict[str, list[dict]] = {}
+    for metric in verified["metrics"]:
+        by_key.setdefault(metric["key"], []).append(metric)
+
+    planned_tools = {call["tool"] for call in calculation_calls}
+    replaced: set[str] = set()
+    calculations: list[dict] = []
+
+    if "calculate_profit_margin" in planned_tools and by_key.get("net_profit_margin_pct"):
+        replaced.add("calculate_profit_margin")
+        for metric in by_key["net_profit_margin_pct"]:
+            pages = ", ".join(str(page) for page in metric["pages"])
+            for period, value in (("previous year", metric["previous"]), ("current year", metric["current"])):
+                if value is None:
+                    continue
+                calculations.append({
+                    "tool": "verified_statement_metric", "metric": "profit_margin", "basis": metric["basis"], "period": period,
+                    "margin_percentage": value,
+                    "formula": f"[{metric['basis']}, {period}] {metric['formula']} (statement page {pages})",
+                    "evidence": f"Read from the {metric['basis']} financial statements, page {pages}.", "verified": True,
+                })
+
+    if "calculate_revenue_growth" in planned_tools and by_key.get("revenue_growth_pct"):
+        replaced.add("calculate_revenue_growth")
+        for metric in by_key["revenue_growth_pct"]:
+            pages = ", ".join(str(page) for page in metric["pages"])
+            calculations.append({
+                "tool": "verified_statement_metric", "metric": "revenue_growth", "basis": metric["basis"], "period": "current year",
+                "growth_percentage": metric["current"],
+                "formula": f"[{metric['basis']}] {metric['formula']} (statement page {pages})",
+                "evidence": f"Read from the {metric['basis']} financial statements, page {pages}.", "verified": True,
+            })
+
+    remaining = [call for call in calculation_calls if call["tool"] not in replaced]
+    return remaining, calculations
+
+
 def _collect_sources(tool_trace: list[dict]) -> list[dict]:
     sources = []
     seen = set()
@@ -204,6 +251,7 @@ def analyze_document_with_agent(document: dict, question: str) -> dict:
             question=normalized_question,
             sources=sources,
             filename=document["filename"],
+            verified_figures=verified_figures,
         )
     except LLMSummaryError as exc:
         raise AgentAnalysisError(str(exc), exc.status_code) from exc
@@ -225,11 +273,12 @@ def analyze_document_with_agent(document: dict, question: str) -> dict:
 
     calculation_calls, plan_limitations = _validated_calculation_calls(plan)
     limitations.extend(plan_limitations)
+    calculation_calls, verified_calculations = _verified_calculations(verified_figures, calculation_calls)
 
     for call in calculation_calls:
         tool_trace.append(_execute_tool_trace(call["tool"], call["inputs"], document))
 
-    calculations = _collect_calculations(tool_trace)
+    calculations = _collect_calculations(tool_trace) + verified_calculations
 
     try:
         final_answer = generate_agent_final_answer(

@@ -7,7 +7,8 @@ from unittest.mock import patch
 import fitz
 
 from app import create_app
-from app.services.llm_service import _build_agent_final_prompt
+from app.services.agent_service import _verified_calculations
+from app.services.llm_service import _build_agent_final_prompt, _build_agent_tool_plan_prompt
 from app.services.pdf_service import DOCUMENT_STORE
 from app.services.sample_service import SAMPLE_PATH
 from app.services.verified_figures_service import build_verified_figures, format_for_prompt, select_keys
@@ -87,6 +88,43 @@ class BuildFiguresTest(unittest.TestCase):
         self.assertIn("could not be read", output["note"])
 
 
+class VerifiedCalculationsTest(unittest.TestCase):
+    def verified(self):
+        return {"metrics": [
+            {"basis": "standalone", "key": "net_profit_margin_pct", "label": "Net profit margin", "unit": "%", "current": -3.38,
+             "previous": 8.01, "formula": "profit for the year / revenue from operations x 100", "pages": [245]},
+            {"basis": "consolidated", "key": "net_profit_margin_pct", "label": "Net profit margin", "unit": "%", "current": -2.85,
+             "previous": 7.17, "formula": "profit for the year / revenue from operations x 100", "pages": [291]},
+            {"basis": "standalone", "key": "revenue_growth_pct", "label": "Revenue growth", "unit": "%", "current": 2.35,
+             "previous": None, "formula": "(revenue this year / revenue last year - 1) x 100", "pages": [245]}]}
+
+    def test_planned_margin_call_is_replaced_by_verified_numbers_for_each_basis(self):
+        mixed = [{"tool": "calculate_profit_margin", "inputs": {"profit": -230.76, "revenue": 7255.59}}]
+        remaining, calculations = _verified_calculations(self.verified(), mixed)
+        self.assertEqual(remaining, [])
+        values = {(c["basis"], c["period"]): c["margin_percentage"] for c in calculations}
+        self.assertEqual(values, {("standalone", "previous year"): 8.01, ("standalone", "current year"): -3.38,
+                                  ("consolidated", "previous year"): 7.17, ("consolidated", "current year"): -2.85})
+        self.assertTrue(all(c["metric"] == "profit_margin" and c["verified"] for c in calculations))
+        self.assertIn("[standalone, current year]", calculations[1]["formula"])
+        self.assertIn("statement page 245", calculations[1]["formula"])
+
+    def test_growth_call_is_replaced_and_other_calls_are_kept(self):
+        calls = [{"tool": "calculate_revenue_growth", "inputs": {}}, {"tool": "search_document", "inputs": {}}]
+        remaining, calculations = _verified_calculations(self.verified(), calls)
+        self.assertEqual([c["tool"] for c in remaining], ["search_document"])
+        self.assertEqual(calculations[0]["growth_percentage"], 2.35)
+
+    def test_nothing_is_added_when_the_planner_chose_no_calculation(self):
+        remaining, calculations = _verified_calculations(self.verified(), [])
+        self.assertEqual((remaining, calculations), ([], []))
+
+    def test_without_verified_metrics_the_planned_calls_are_untouched(self):
+        calls = [{"tool": "calculate_profit_margin", "inputs": {"profit": 1, "revenue": 2}}]
+        for verified in (None, {}, {"metrics": []}):
+            self.assertEqual(_verified_calculations(verified, calls), (calls, []))
+
+
 class PromptTest(unittest.TestCase):
     SOURCES = [{"page": 3, "chunk_id": "p3-c0", "excerpt": "Some passage."}]
 
@@ -105,6 +143,15 @@ class PromptTest(unittest.TestCase):
         prompt = _build_agent_final_prompt("Q?", self.SOURCES, [], [], "r.pdf")
         self.assertNotIn("Verified statement figures", prompt)
         self.assertIn("Retrieved passages", prompt)
+
+    def test_planner_prompt_gets_the_figures_and_the_final_prompt_handles_swings(self):
+        verified = build_verified_figures(doc(PL_LINES), "Why did profit fall?")
+        plan_prompt = _build_agent_tool_plan_prompt("Why did profit fall?", self.SOURCES, "r.pdf", verified_figures=verified)
+        self.assertIn("Verified statement figures", plan_prompt)
+        self.assertIn("do NOT list them as missing", plan_prompt)
+        self.assertNotIn("Verified statement figures", _build_agent_tool_plan_prompt("Q?", self.SOURCES, "r.pdf"))
+        final_prompt = _build_agent_final_prompt("Why?", self.SOURCES, [], [], "r.pdf", verified_figures=verified)
+        self.assertIn("swung to a loss", final_prompt)
 
     def test_format_returns_empty_text_when_nothing_found(self):
         self.assertEqual(format_for_prompt(None), "")
@@ -168,6 +215,37 @@ class AgentIntegrationTest(unittest.TestCase):
         response, _ = self.run_agent(document_id, "How did revenue from operations do?")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json["verified_figures"]["figures"], [])
+
+    def test_mixed_basis_margin_inputs_from_the_planner_never_reach_the_calculations_box(self):
+        document_id = self.client.post("/api/sample-document").json["document_id"]
+        plan = {"success": True, "configured": True, "status": "planned", "provider": "t", "model": "t", "limitations": [],
+                "tool_calls": [{"tool": "calculate_profit_margin", "inputs": {"profit": 93, "revenue": 2430}}]}  # consolidated profit / standalone income
+        final = {"success": True, "configured": True, "status": "analyzed", "provider": "t", "model": "t", "answer": "ok", "disclaimer": "d"}
+        with (patch("app.services.agent_service.generate_analysis_tool_plan", return_value=plan) as mocked_plan,
+              patch("app.services.agent_service.generate_agent_final_answer", return_value=final)):
+            body = self.client.post(f"/api/documents/{document_id}/analyze", json={"question": "Calculate the profit margin."}).json
+        self.assertNotIn("calculate_profit_margin", [t["tool"] for t in body["tools_executed"]])
+        margins = {(c["basis"], c["period"]): c["margin_percentage"] for c in body["calculations"]}
+        self.assertEqual(margins, {("standalone", "previous year"): 7.85, ("standalone", "current year"): 2.21,
+                                   ("consolidated", "previous year"): 4.8, ("consolidated", "current year"): 3.05})
+        self.assertNotIn(3.83, margins.values())  # the mixed-basis value 93 / 2430
+        self.assertIn("verified_figures", mocked_plan.call_args.kwargs)
+
+    def test_planned_calculation_still_runs_when_no_statements_are_recognised(self):
+        pdf = fitz.open()
+        pdf.new_page().insert_text((72, 72), "Profit was 15 and revenue was 125 this year according to management.")
+        data = pdf.tobytes()
+        pdf.close()
+        document_id = self.client.post("/api/upload", data={"file": (io.BytesIO(data), "memo.pdf")},
+                                       content_type="multipart/form-data").json["document_id"]
+        plan = {"success": True, "configured": True, "status": "planned", "provider": "t", "model": "t", "limitations": [],
+                "tool_calls": [{"tool": "calculate_profit_margin", "inputs": {"profit": 15, "revenue": 125}}]}
+        final = {"success": True, "configured": True, "status": "analyzed", "provider": "t", "model": "t", "answer": "ok", "disclaimer": "d"}
+        with (patch("app.services.agent_service.generate_analysis_tool_plan", return_value=plan),
+              patch("app.services.agent_service.generate_agent_final_answer", return_value=final)):
+            body = self.client.post(f"/api/documents/{document_id}/analyze", json={"question": "Calculate the profit margin."}).json
+        self.assertIn("calculate_profit_margin", [t["tool"] for t in body["tools_executed"]])
+        self.assertEqual(body["calculations"][0]["margin_percentage"], 12.0)
 
     def test_refusals_do_not_run_any_tools(self):
         document_id = self.client.post("/api/sample-document").json["document_id"]

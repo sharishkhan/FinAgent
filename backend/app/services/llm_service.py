@@ -96,7 +96,7 @@ def _extract_json_object(text: str) -> dict:
     return parsed
 
 
-def _build_agent_tool_plan_prompt(question: str, sources: list[dict], filename: str) -> str:
+def _build_agent_tool_plan_prompt(question: str, sources: list[dict], filename: str, verified_figures: dict | None = None) -> str:
     passages = "\n\n".join(
         (
             f"Source {index} | Page {source['page']} | Chunk {source['chunk_id']}:\n"
@@ -104,6 +104,17 @@ def _build_agent_tool_plan_prompt(question: str, sources: list[dict], filename: 
         )
         for index, source in enumerate(sources, start=1)
     )
+
+    figures_block = format_verified_figures(verified_figures)
+    figures_section = ""
+    if figures_block:
+        figures_section = (
+            "Verified statement figures are already available to the final answer step, so do NOT list them "
+            "as missing information in limitations. Margin and growth calculations for these figures are "
+            "recalculated from the verified statements automatically; you may still request the matching "
+            "calculation tool when the question asks for it.\n"
+            f"Verified statement figures:\n{figures_block}\n\n"
+        )
 
     return (
         "You are planning bounded financial analysis tool calls for an uploaded PDF. "
@@ -123,6 +134,7 @@ def _build_agent_tool_plan_prompt(question: str, sources: list[dict], filename: 
         "}\n\n"
         f"Filename: {filename}\n"
         f"Question: {question}\n\n"
+        f"{figures_section}"
         f"Source passages:\n{passages}"
     )
 
@@ -150,7 +162,9 @@ def _build_agent_final_prompt(
             "Verified statement figures were read directly from the financial statements and "
             "cross-checked. When one of them answers the question, use it and cite its statement "
             "page; prefer it over the loose passages if they differ. Always say whether a figure is "
-            "standalone or consolidated, and if the question does not say which, give both.\n"
+            "standalone or consolidated, and if the question does not say which, give both. When a result "
+            "swung from a profit to a loss (or the reverse), say it swung to a loss (or profit) instead of "
+            "quoting a percentage decrease.\n"
             f"Verified statement figures:\n{figures_block}\n\n"
         )
         tool_trace = [
@@ -847,6 +861,7 @@ def generate_analysis_tool_plan(
     question: str,
     sources: list[dict],
     filename: str,
+    verified_figures: dict | None = None,
 ) -> dict:
     config = get_llm_config()
 
@@ -865,6 +880,7 @@ def generate_analysis_tool_plan(
         question=question,
         sources=sources,
         filename=filename,
+        verified_figures=verified_figures,
     )
     raw_plan = _generate_text(
         config=config,
