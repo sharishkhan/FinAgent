@@ -90,7 +90,9 @@ def build_walk(values: dict, page: int) -> tuple[dict | None, list[str]]:
     revenue_prev, revenue_cur = v["revenue_from_operations"]
     walk["revenue_growth_pct"] = round((revenue_cur / revenue_prev - 1) * 100, 2) if revenue_prev else None
     ranked = sorted((s for s in steps if s["direction"] != "flat"), key=lambda s: abs(s["effect"]), reverse=True)
-    walk["drivers"] = [{**s, "share_of_change_pct": round(s["effect"] / change * 100, 1) if abs(change) > TOLERANCE else None} for s in ranked[:3]]
+    total_movement = sum(abs(s["effect"]) for s in steps)
+    walk["drivers"] = [{**s, "share_of_movement_pct": round(abs(s["effect"]) / total_movement * 100, 1) if total_movement > TOLERANCE else None}
+                       for s in ranked[:3]]
     walk["sentences"] = _sentences(walk, pat_prev, pat_cur, steps)
     return walk, []
 

@@ -29,6 +29,7 @@ from .services.sample_service import SampleDocumentError, load_sample_document
 from .services.settings_service import check_llm_connection, get_settings_overview
 from .services.profit_walk_service import build_profit_walks
 from .services.statement_extractor import compute_metrics, extract_financial_statements
+from .services.story_service import build_story
 
 api = Blueprint("api", __name__)
 
@@ -106,6 +107,31 @@ def document_profit_walk(document_id):
         return jsonify({"success": False, "error": "Document not found."}), 404
 
     return jsonify({"success": True, "document_id": document_id, **build_profit_walks(document)})
+
+
+@api.post("/documents/<document_id>/story")
+def document_story(document_id):
+    document = get_processed_document(document_id)
+    if document is None:
+        return jsonify({"success": False, "error": "Document not found."}), 404
+
+    payload = request.get_json(silent=True) or {}
+    basis = payload.get("basis") if isinstance(payload.get("basis"), str) else None
+    result = build_story(document, basis)
+
+    if result["walk"] is not None:
+        try:
+            result["result_id"] = save_result(
+                document_id=document_id,
+                result_type="story",
+                title=f"Story for {document['filename']}",
+                status=result["status"],
+                payload=result,
+            )
+        except PersistenceError as exc:
+            return jsonify({"success": False, "error": str(exc)}), 500
+
+    return jsonify(result)
 
 
 @api.post("/documents/<document_id>/summary")
