@@ -27,6 +27,8 @@ PL_ITEMS = {
     "other_income": r"^other income",
     "total_income": r"^total income",
     "cost_of_materials": r"^cost of materials consumed",
+    "purchases_stock_in_trade": r"^purchases? of stock[- ]in[- ]trade",
+    "changes_in_inventories": r"^changes in inventories",
     "employee_benefits": r"^employee benefits? expenses?",
     "finance_costs": r"^finance costs?",
     "depreciation_amortisation": r"^depreciation and amorti[sz]ation",

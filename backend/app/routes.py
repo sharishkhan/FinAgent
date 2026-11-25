@@ -27,6 +27,7 @@ from .services.persistence_service import (
 from .services.retrieval_service import RetrievalError, retrieve_relevant_chunks
 from .services.sample_service import SampleDocumentError, load_sample_document
 from .services.settings_service import check_llm_connection, get_settings_overview
+from .services.profit_walk_service import build_profit_walks
 from .services.statement_extractor import compute_metrics, extract_financial_statements
 
 api = Blueprint("api", __name__)
@@ -96,6 +97,15 @@ def document_financials(document_id):
     extracted = extract_financial_statements(document)
     metrics = {basis: compute_metrics(extracted["statements"], basis) for basis in extracted["statements"]}
     return jsonify({"success": True, "document_id": document_id, **extracted, "metrics": metrics})
+
+
+@api.get("/documents/<document_id>/profit-walk")
+def document_profit_walk(document_id):
+    document = get_processed_document(document_id)
+    if document is None:
+        return jsonify({"success": False, "error": "Document not found."}), 404
+
+    return jsonify({"success": True, "document_id": document_id, **build_profit_walks(document)})
 
 
 @api.post("/documents/<document_id>/summary")
